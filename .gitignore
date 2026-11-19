@@ -1,0 +1,46 @@
+# --- Secretos / entorno ---
+.env
+.env.*
+!.env.example
+
+# --- Java / Kotlin / Gradle ---
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+*.class
+*.log
+.kotlin/
+out/
+bin/
+hs_err_pid*
+
+# --- Node / Next.js ---
+node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+.vercel/
+# Generado automáticamente por `next dev`
+frontend/AGENTS.md
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# --- IDEs / SO ---
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+!.vscode/extensions.json
+.project
+.classpath
+.settings/
+*.swp
+.DS_Store
+Thumbs.db
+
+# --- Claude Code (local) ---
+.claude/settings.local.json
