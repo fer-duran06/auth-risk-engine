@@ -1,0 +1,2 @@
+-- V1: migración inicial vacía (Fase 0).
+-- Solo establece la línea base del historial de Flyway; las tablas se crean en fases posteriores.
