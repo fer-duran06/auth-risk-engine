@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+/*
+ * Tokens de diseño de AuthShield (estilo oscuro tipo ciberseguridad).
+ * Se usan como utilidades de Tailwind: bg-fondo, bg-tarjeta, text-acento, text-desafio, etc.
+ */
+@theme {
+  --color-fondo: #0b1020;
+  --color-tarjeta: #121a30;
+  --color-borde: #1f2a48;
+  --color-texto: #e6ebf5;
+  --color-texto-suave: #8a96b3;
+  --color-acento: #2ea8ff;
+  --color-desafio: #ff8a1f;
+  --color-bloqueo: #ff4d5e;
+  --color-permitido: #22c55e;
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+body {
+  background: var(--color-fondo);
+  color: var(--color-texto);
+}
