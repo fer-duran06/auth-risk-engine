@@ -24,7 +24,9 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD}
-      timeout: 2s
+      # Cortos a propósito: si Redis no responde, el login cae rápido al fail-safe (CHALLENGE).
+      timeout: 500ms
+      connect-timeout: 500ms
 
 server:
   port: ${SERVER_PORT:8080}
@@ -59,3 +61,29 @@ app:
     refresh-token-ttl: 7d
     # Secure en la cookie de refresh: activo salvo que el perfil o la variable lo desactiven.
     cookie-secure: ${AUTH_COOKIE_SECURE:true}
+  # Acepta el header X-Simulated-IP (simulador). Solo el perfil dev lo activa.
+  demo-mode: false
+  # Motor de riesgo. Cada regla suma su peso si su contador llega al umbral dentro de la ventana.
+  # Los contadores son de intentos previos (no incluyen el intento que se evalúa).
+  risk:
+    thresholds:
+      challenge: 30   # score >= 30 -> CHALLENGE
+      block: 70       # score >= 70 -> BLOCK (el score se acota a 100)
+    rules:
+      ip-velocity:
+        weight: 30
+        threshold: 10       # intentos desde la IP
+        window: 1m
+      distinct-users-per-ip:
+        weight: 25
+        threshold: 5        # emails distintos desde la IP
+        window: 10m
+      account-failures:
+        weight: 20
+        threshold: 5        # fallos contra el mismo email
+        window: 15m
+      global-failure-rate:
+        weight: 15
+        ratio: 0.5          # proporción de fallos en todo el sistema
+        min-attempts: 20    # volumen mínimo para evaluar la proporción
+        window: 5m          # en buckets de 1 minuto

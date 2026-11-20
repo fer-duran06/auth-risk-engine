@@ -10,6 +10,8 @@ app:
   auth:
     # En local se usa http://localhost, donde una cookie Secure no se enviaría.
     cookie-secure: ${AUTH_COOKIE_SECURE:false}
+  # Permite X-Simulated-IP para el simulador de ataque (solo contra localhost).
+  demo-mode: true
 
 logging:
   level:
