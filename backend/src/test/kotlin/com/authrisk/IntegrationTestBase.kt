@@ -42,6 +42,8 @@ abstract class IntegrationTestBase {
         @JvmStatic
         fun authProperties(registry: DynamicPropertyRegistry) {
             registry.add("app.auth.jwt-secret") { jwtSecret }
+            // Explícito para no depender del perfil activo: las pruebas varían la IP con X-Simulated-IP.
+            registry.add("app.demo-mode") { "true" }
         }
     }
 }
