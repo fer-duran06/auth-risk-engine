@@ -1,0 +1,65 @@
+package com.authrisk.infrastructure.config
+
+import com.authrisk.application.auth.GetCurrentUserUseCase
+import com.authrisk.application.auth.LoginUseCase
+import com.authrisk.application.auth.LogoutUseCase
+import com.authrisk.application.auth.RefreshUseCase
+import com.authrisk.application.auth.RegisterUseCase
+import com.authrisk.application.auth.SessionTokenFactory
+import com.authrisk.application.port.TransactionRunner
+import com.authrisk.domain.port.PasswordHasher
+import com.authrisk.domain.port.RefreshTokenGenerator
+import com.authrisk.domain.port.RefreshTokenRepository
+import com.authrisk.domain.port.TokenIssuer
+import com.authrisk.domain.port.UserRepository
+import com.authrisk.infrastructure.security.AuthProperties
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+import java.time.Clock
+
+/** Registra los casos de uso (Kotlin puro) como beans de Spring. */
+@Configuration
+class UseCaseConfig {
+
+    @Bean
+    fun clock(): Clock = Clock.systemUTC()
+
+    @Bean
+    fun sessionTokenFactory(issuer: TokenIssuer, generator: RefreshTokenGenerator, props: AuthProperties) =
+        SessionTokenFactory(issuer, generator, props.refreshTokenTtl)
+
+    @Bean
+    fun registerUseCase(users: UserRepository, hasher: PasswordHasher, tx: TransactionRunner, clock: Clock) =
+        RegisterUseCase(users, hasher, tx, clock)
+
+    @Bean
+    fun loginUseCase(
+        users: UserRepository,
+        refreshTokens: RefreshTokenRepository,
+        hasher: PasswordHasher,
+        sessionTokens: SessionTokenFactory,
+        tx: TransactionRunner,
+        clock: Clock,
+    ) = LoginUseCase(users, refreshTokens, hasher, sessionTokens, tx, clock)
+
+    @Bean
+    fun refreshUseCase(
+        users: UserRepository,
+        refreshTokens: RefreshTokenRepository,
+        generator: RefreshTokenGenerator,
+        sessionTokens: SessionTokenFactory,
+        tx: TransactionRunner,
+        clock: Clock,
+    ) = RefreshUseCase(users, refreshTokens, generator, sessionTokens, tx, clock)
+
+    @Bean
+    fun logoutUseCase(
+        refreshTokens: RefreshTokenRepository,
+        generator: RefreshTokenGenerator,
+        tx: TransactionRunner,
+        clock: Clock,
+    ) = LogoutUseCase(refreshTokens, generator, tx, clock)
+
+    @Bean
+    fun getCurrentUserUseCase(users: UserRepository) = GetCurrentUserUseCase(users)
+}

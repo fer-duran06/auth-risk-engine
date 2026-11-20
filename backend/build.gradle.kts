@@ -26,6 +26,10 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-security")
+    // Emisión y validación de JWT HS256 (Nimbus) para el token de acceso.
+    implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
+    // Proveedor de Argon2id que requiere Argon2PasswordEncoder de Spring Security.
+    implementation("org.bouncycastle:bcprov-jdk18on:1.80")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
     implementation("org.flywaydb:flyway-core")

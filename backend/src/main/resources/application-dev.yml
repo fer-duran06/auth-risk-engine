@@ -6,6 +6,11 @@ springdoc:
     enabled: true
     path: /swagger-ui.html
 
+app:
+  auth:
+    # En local se usa http://localhost, donde una cookie Secure no se enviaría.
+    cookie-secure: ${AUTH_COOKIE_SECURE:false}
+
 logging:
   level:
     com.authrisk: DEBUG
