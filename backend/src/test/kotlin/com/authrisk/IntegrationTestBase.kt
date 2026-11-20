@@ -1,6 +1,9 @@
 package com.authrisk
 
+import org.junit.jupiter.api.BeforeEach
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection
+import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.containers.GenericContainer
@@ -13,6 +16,15 @@ import java.util.Base64
  * por todas las clases para reutilizar el contexto de Spring. El secreto JWT se genera al azar.
  */
 abstract class IntegrationTestBase {
+
+    @Autowired
+    private lateinit var redisTemplate: StringRedisTemplate
+
+    /** Cada prueba parte sin contadores de riesgo: los intentos de otra no deben influir en su score. */
+    @BeforeEach
+    fun flushRiskCounters() {
+        redisTemplate.execute { connection -> connection.serverCommands().flushAll() }
+    }
 
     companion object {
         @ServiceConnection

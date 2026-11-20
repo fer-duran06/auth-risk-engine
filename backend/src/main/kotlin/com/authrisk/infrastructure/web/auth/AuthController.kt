@@ -6,9 +6,11 @@ import com.authrisk.application.auth.LoginUseCase
 import com.authrisk.application.auth.LogoutUseCase
 import com.authrisk.application.auth.RefreshUseCase
 import com.authrisk.application.auth.RegisterUseCase
+import com.authrisk.infrastructure.web.ClientIpResolver
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -35,6 +37,7 @@ class AuthController(
     private val logout: LogoutUseCase,
     private val currentUser: GetCurrentUserUseCase,
     private val cookies: RefreshCookieFactory,
+    private val clientIp: ClientIpResolver,
     private val clock: Clock,
 ) {
 
@@ -47,8 +50,8 @@ class AuthController(
 
     @Operation(summary = "Inicia sesión: devuelve el access token y fija la cookie de refresh.")
     @PostMapping("/login")
-    fun login(@Valid @RequestBody body: LoginRequest): ResponseEntity<TokenResponse> =
-        tokensResponse(login.execute(body.email, body.password))
+    fun login(@Valid @RequestBody body: LoginRequest, request: HttpServletRequest): ResponseEntity<TokenResponse> =
+        tokensResponse(login.execute(body.email, body.password, clientIp.resolve(request)))
 
     @Operation(summary = "Rota el refresh token de la cookie y emite un access token nuevo.")
     @PostMapping("/refresh")

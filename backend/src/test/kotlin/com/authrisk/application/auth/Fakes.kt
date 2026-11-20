@@ -1,7 +1,19 @@
 package com.authrisk.application.auth
 
 import com.authrisk.application.port.TransactionRunner
+import com.authrisk.domain.port.LoginAttemptRepository
 import com.authrisk.domain.port.PasswordHasher
+import com.authrisk.domain.port.RiskCounters
+import com.authrisk.domain.risk.LoginAttempt
+import com.authrisk.domain.risk.LoginOutcome
+import com.authrisk.domain.risk.RiskCountersUnavailableException
+import com.authrisk.domain.risk.RiskEngine
+import com.authrisk.domain.risk.RiskPolicy
+import com.authrisk.domain.risk.RiskSignals
+import com.authrisk.domain.risk.rules.AccountFailuresRule
+import com.authrisk.domain.risk.rules.DistinctUsersPerIpRule
+import com.authrisk.domain.risk.rules.GlobalFailureRateRule
+import com.authrisk.domain.risk.rules.IpVelocityRule
 import com.authrisk.domain.port.RefreshTokenGenerator
 import com.authrisk.domain.port.RefreshTokenRepository
 import com.authrisk.domain.port.TokenIssuer
@@ -105,20 +117,54 @@ class AuthFixture {
     val refreshTtl: Duration = Duration.ofDays(7)
     private val sessions = SessionTokenFactory(FakeTokenIssuer(clock), generator, refreshTtl)
 
+    val riskCounters = FakeRiskCounters()
+    val loginAttempts = InMemoryLoginAttemptRepository()
+    val riskEngine = RiskEngine(
+        listOf(IpVelocityRule(), DistinctUsersPerIpRule(), AccountFailuresRule(), GlobalFailureRateRule()),
+        RiskPolicy(),
+    )
+
     val register = RegisterUseCase(users, hasher, tx, clock)
-    val login = LoginUseCase(users, refreshTokens, hasher, sessions, tx, clock)
+    val login = LoginUseCase(users, refreshTokens, hasher, sessions, riskEngine, riskCounters, loginAttempts, tx, clock)
     val refresh = RefreshUseCase(users, refreshTokens, generator, sessions, tx, clock)
     val logout = LogoutUseCase(refreshTokens, generator, tx, clock)
     val currentUser = GetCurrentUserUseCase(users)
 
     fun registerAndLogin(email: String = "ana@example.com", password: String = PASSWORD): AuthTokens {
         register.execute(email, password)
-        return login.execute(email, password)
+        return login.execute(email, password, IP)
     }
 
     fun recordOf(rawToken: String) = refreshTokens.findByHashForUpdate(generator.hash(rawToken))!!
 
     companion object {
         const val PASSWORD = "contrasena-larga-1"
+    }
+}
+
+/** IP de prueba para los casos de uso. */
+const val IP = "203.0.113.10"
+
+/** Contadores controlables: devuelve [signals] y anota cada registro; con [failing] simula Redis caído. */
+class FakeRiskCounters : RiskCounters {
+    var signals = RiskSignals()
+    var failing = false
+    val recorded = mutableListOf<Triple<String, String, LoginOutcome>>()
+
+    override fun read(ip: String, email: String): RiskSignals {
+        if (failing) throw RiskCountersUnavailableException()
+        return signals
+    }
+
+    override fun record(ip: String, email: String, outcome: LoginOutcome) {
+        if (failing) throw RiskCountersUnavailableException()
+        recorded += Triple(ip, email, outcome)
+    }
+}
+
+class InMemoryLoginAttemptRepository : LoginAttemptRepository {
+    val attempts = mutableListOf<LoginAttempt>()
+    override fun save(attempt: LoginAttempt) {
+        attempts += attempt
     }
 }

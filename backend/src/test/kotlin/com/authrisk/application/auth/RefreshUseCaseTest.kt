@@ -46,7 +46,7 @@ class RefreshUseCaseTest {
     @Test
     fun `la reutilización no afecta a otras sesiones del mismo usuario`() {
         val sessionA = f.registerAndLogin()
-        val sessionB = f.login.execute("ana@example.com", AuthFixture.PASSWORD)
+        val sessionB = f.login.execute("ana@example.com", AuthFixture.PASSWORD, IP)
         f.refresh.execute(sessionA.refreshToken)
         assertFailsWith<InvalidRefreshTokenException> { f.refresh.execute(sessionA.refreshToken) }
 

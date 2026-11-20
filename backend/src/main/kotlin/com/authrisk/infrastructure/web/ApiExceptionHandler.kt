@@ -1,6 +1,9 @@
 package com.authrisk.infrastructure.web
 
+import com.authrisk.domain.risk.ChallengeRequiredException
+import com.authrisk.domain.risk.LoginBlockedException
 import com.authrisk.domain.token.InvalidRefreshTokenException
+import com.authrisk.infrastructure.web.auth.CodedErrorResponse
 import com.authrisk.domain.user.InvalidCredentialsException
 import com.authrisk.domain.user.InvalidEmailException
 import com.authrisk.domain.user.UserNotFoundException
@@ -27,6 +30,15 @@ class ApiExceptionHandler(private val cookies: RefreshCookieFactory) {
     @ExceptionHandler(InvalidCredentialsException::class, UserNotFoundException::class)
     fun unauthorized(): ResponseEntity<ErrorResponse> =
         ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorResponse(INVALID_CREDENTIALS))
+
+    // Sin Retry-After ni detalles: no se revela la ventana, el score ni si el email existe.
+    @ExceptionHandler(LoginBlockedException::class)
+    fun blocked(): ResponseEntity<ErrorResponse> =
+        ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ErrorResponse(TOO_MANY_ATTEMPTS))
+
+    @ExceptionHandler(ChallengeRequiredException::class)
+    fun challenge(): ResponseEntity<CodedErrorResponse> =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(CodedErrorResponse(CHALLENGE_REQUIRED_MESSAGE, CHALLENGE_REQUIRED))
 
     @ExceptionHandler(InvalidRefreshTokenException::class)
     fun invalidRefresh(ex: InvalidRefreshTokenException): ResponseEntity<ErrorResponse> {
@@ -64,5 +76,8 @@ class ApiExceptionHandler(private val cookies: RefreshCookieFactory) {
     companion object {
         const val INVALID_CREDENTIALS = "Credenciales inválidas"
         const val INVALID_SESSION = "Sesión inválida o expirada"
+        const val TOO_MANY_ATTEMPTS = "Demasiados intentos. Intenta más tarde."
+        const val CHALLENGE_REQUIRED_MESSAGE = "Verificación adicional requerida"
+        const val CHALLENGE_REQUIRED = "CHALLENGE_REQUIRED"
     }
 }

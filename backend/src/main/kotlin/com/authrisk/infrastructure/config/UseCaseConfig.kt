@@ -7,7 +7,11 @@ import com.authrisk.application.auth.RefreshUseCase
 import com.authrisk.application.auth.RegisterUseCase
 import com.authrisk.application.auth.SessionTokenFactory
 import com.authrisk.application.port.TransactionRunner
+import com.authrisk.domain.port.LoginAttemptRepository
 import com.authrisk.domain.port.PasswordHasher
+import com.authrisk.domain.port.RiskCounters
+import com.authrisk.domain.risk.RiskEngine
+import com.authrisk.infrastructure.redis.RiskProperties
 import com.authrisk.domain.port.RefreshTokenGenerator
 import com.authrisk.domain.port.RefreshTokenRepository
 import com.authrisk.domain.port.TokenIssuer
@@ -33,14 +37,20 @@ class UseCaseConfig {
         RegisterUseCase(users, hasher, tx, clock)
 
     @Bean
+    fun riskEngine(props: RiskProperties): RiskEngine = props.toEngine()
+
+    @Bean
     fun loginUseCase(
         users: UserRepository,
         refreshTokens: RefreshTokenRepository,
         hasher: PasswordHasher,
         sessionTokens: SessionTokenFactory,
+        riskEngine: RiskEngine,
+        riskCounters: RiskCounters,
+        loginAttempts: LoginAttemptRepository,
         tx: TransactionRunner,
         clock: Clock,
-    ) = LoginUseCase(users, refreshTokens, hasher, sessionTokens, tx, clock)
+    ) = LoginUseCase(users, refreshTokens, hasher, sessionTokens, riskEngine, riskCounters, loginAttempts, tx, clock)
 
     @Bean
     fun refreshUseCase(

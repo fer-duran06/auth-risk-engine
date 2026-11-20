@@ -47,3 +47,6 @@ data class UserResponse(val id: UUID, val email: String, val role: String, val c
 data class MessageResponse(val message: String)
 
 data class ErrorResponse(val error: String, val details: List<String> = emptyList())
+
+/** Error con código estable para que el cliente decida el siguiente paso (p. ej. pedir 2FA). */
+data class CodedErrorResponse(val error: String, val code: String)
