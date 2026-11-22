@@ -8,5 +8,15 @@ export const authApi = createAuthApi(
   createHttp({ baseUrl: API_URL, demoMode: DEMO_MODE, getSimulatedIp: simulatedIp.get }),
 );
 
-export type { AccessToken, AuthApi, CurrentUser, LoginResult, MeResult, RegisterResult } from "./auth";
+export type {
+  AccessToken,
+  AuthApi,
+  CurrentUser,
+  LoginResult,
+  MeResult,
+  RegisterResult,
+  TotpSetup,
+  TotpStatus,
+  VerifyResult,
+} from "./auth";
 export { API_URL, DEMO_MODE } from "./config";

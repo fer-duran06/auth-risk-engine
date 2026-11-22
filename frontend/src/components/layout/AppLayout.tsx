@@ -6,8 +6,11 @@ import { useState, type ReactNode } from "react";
 import { Button, cx, Logo } from "@/components/ui";
 import { session } from "@/lib/session";
 
-/** Enlaces del área de usuario. Las vistas de 2FA y dispositivos se añadirán en sus fases. */
-const NAV = [{ href: "/me", label: "Mi cuenta" }] as const;
+/** Enlaces del área de usuario. */
+const NAV = [
+  { href: "/me", label: "Mi cuenta" },
+  { href: "/account/security", label: "Seguridad" },
+] as const;
 
 /**
  * Marco del área autenticada de usuario: barra superior con marca, navegación y cierre de sesión.

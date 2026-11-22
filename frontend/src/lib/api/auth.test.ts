@@ -97,9 +97,18 @@ describe("login", () => {
     expect(await setup(json(400, { error: "Solicitud inválida" })).api.login("a", "b")).toEqual({ kind: "invalid" });
   });
 
-  it("403 con CHALLENGE_REQUIRED es desafío", async () => {
-    const { api } = setup(json(403, { error: "Verificación adicional requerida", code: "CHALLENGE_REQUIRED" }));
-    expect(await api.login("a", "b")).toEqual({ kind: "challenge" });
+  it("403 con CHALLENGE_REQUIRED y challengeId es desafío", async () => {
+    const { api } = setup(
+      json(403, { error: "Verificación adicional requerida", code: "CHALLENGE_REQUIRED", challengeId: "abc_-123" }),
+    );
+    expect(await api.login("a", "b")).toEqual({ kind: "challenge", challengeId: "abc_-123" });
+  });
+
+  it("403 CHALLENGE_REQUIRED sin challengeId válido es error (no se puede continuar)", async () => {
+    for (const challengeId of [undefined, "", 42, "x".repeat(129)]) {
+      const body = { error: "Verificación adicional requerida", code: "CHALLENGE_REQUIRED", challengeId };
+      expect(await setup(json(403, body)).api.login("a", "b")).toEqual({ kind: "error" });
+    }
   });
 
   it("403 sin el código es error genérico", async () => {

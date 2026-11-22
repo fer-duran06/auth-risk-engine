@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { DemoIpSelector } from "@/components/auth/DemoIpSelector";
-import { Alert, Badge, Button, Card, Icon, PasswordField, TextField } from "@/components/ui";
+import { Alert, Button, Card, Icon, PasswordField, TextField } from "@/components/ui";
 import { authApi } from "@/lib/api";
 import { EMAIL_MAX_LENGTH, PASSWORD_MAX_LENGTH } from "@/lib/api/config";
 import { session, useSessionStatus } from "@/lib/session";
+import { challengeStore } from "@/lib/two-factor/challenge-store";
 
 type FieldErrors = { email?: string; password?: string };
 type FormError = { tone: "error" | "block"; text: string };
@@ -26,7 +27,6 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<FormError | null>(null);
-  const [challenge, setChallenge] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Si ya hay sesión en memoria (p. ej. al volver atrás), ir directo al área de usuario.
@@ -61,8 +61,10 @@ export function LoginForm() {
         router.replace("/me");
         return;
       case "challenge":
+        // El challengeId queda solo en memoria; la pantalla de verificación lo toma de ahí.
         setPassword("");
-        setChallenge(true);
+        challengeStore.set(result.challengeId);
+        router.push("/login/verify");
         return;
       case "invalid":
         setPassword("");
@@ -75,17 +77,6 @@ export function LoginForm() {
       default:
         setFormError({ tone: "error", text: MESSAGES.error });
     }
-  }
-
-  if (challenge) {
-    return (
-      <ChallengePending
-        onBack={() => {
-          setChallenge(false);
-          requestAnimationFrame(() => document.getElementById("login-email")?.focus());
-        }}
-      />
-    );
   }
 
   return (
@@ -150,43 +141,6 @@ export function LoginForm() {
           Crear cuenta
         </Link>
       </p>
-    </Card>
-  );
-}
-
-/** Estado CHALLENGE (403 CHALLENGE_REQUIRED). El segundo factor (TOTP) llega en una fase posterior. */
-function ChallengePending({ onBack }: { onBack: () => void }) {
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  useEffect(() => titleRef.current?.focus(), []);
-
-  return (
-    <Card className="overflow-hidden">
-      <div className="h-px bg-gradient-to-r from-transparent via-desafio to-transparent" aria-hidden />
-      <div className="p-6 text-center sm:p-8">
-        <span className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl border border-desafio/40 bg-desafio/10 text-desafio">
-          <Icon name="shield" size={22} />
-        </span>
-        <h1 ref={titleRef} tabIndex={-1} className="text-2xl font-semibold tracking-tight focus:outline-none">
-          Verificación adicional requerida
-        </h1>
-        <p className="mt-3 text-sm text-texto-suave">
-          Por seguridad, este inicio de sesión necesita un segundo factor de verificación.
-        </p>
-        <div className="mt-6 text-left">
-          <Alert tone="challenge" title="Verificación en dos pasos pendiente">
-            <p>
-              La verificación con código de una app autenticadora (TOTP) aún no está disponible. Inténtalo de nuevo más
-              tarde.
-            </p>
-          </Alert>
-        </div>
-        <div className="mt-4 flex justify-center">
-          <Badge tone="challenge">Pendiente</Badge>
-        </div>
-        <Button variant="secondary" fullWidth className="mt-6" onClick={onBack}>
-          Volver al inicio de sesión
-        </Button>
-      </div>
     </Card>
   );
 }

@@ -14,16 +14,47 @@ export interface CurrentUser {
   createdAt: string;
 }
 
+/** Datos para registrar la cuenta en la app autenticadora (POST /api/auth/2fa/setup). */
+export interface TotpSetup {
+  secret: string;
+  otpauthUri: string;
+}
+
+/** Estado del 2FA (GET /api/auth/2fa/status). */
+export interface TotpStatus {
+  enabled: boolean;
+  confirmedAt: string | null;
+}
+
 /**
  * Resultados tipados: las páginas no interpretan códigos HTTP.
  * Nunca se exponen score ni reglas (el backend tampoco los envía).
+ * En "challenge" no se sabe (ni el backend lo dice) si la contraseña era correcta.
  */
 export type LoginResult =
   | { kind: "ok"; token: AccessToken }
   | { kind: "invalid" }
-  | { kind: "challenge" }
+  | { kind: "challenge"; challengeId: string }
   | { kind: "rate-limited" }
   | { kind: "error" };
+
+/** "invalid" agrupa código incorrecto, desafío vencido o agotado y contraseña incorrecta: el backend no distingue. */
+export type VerifyResult = { kind: "ok"; token: AccessToken } | { kind: "invalid" } | { kind: "error" };
+
+export type TotpSetupResult =
+  | { kind: "ok"; setup: TotpSetup }
+  | { kind: "already-enabled" }
+  | { kind: "unauthorized" }
+  | { kind: "error" };
+
+export type TotpEnableResult =
+  | { kind: "ok" }
+  | { kind: "invalid" }
+  | { kind: "already-enabled" }
+  | { kind: "unauthorized" }
+  | { kind: "error" };
+
+export type TotpStatusResult = { kind: "ok"; status: TotpStatus } | { kind: "unauthorized" } | { kind: "error" };
 
 export type RegisterResult = { kind: "accepted" } | { kind: "invalid" } | { kind: "rate-limited" } | { kind: "error" };
 
@@ -55,6 +86,28 @@ function parseUser(body: unknown): CurrentUser | null {
   return { id, email, role, createdAt } as CurrentUser;
 }
 
+/** Longitud máxima aceptada por el backend para el challengeId (32 bytes en base64url son 43). */
+const CHALLENGE_ID_MAX_LENGTH = 128;
+
+function parseChallengeId(body: unknown): string | null {
+  if (!isRecord(body) || body.code !== CHALLENGE_REQUIRED) return null;
+  const id = body.challengeId;
+  return typeof id === "string" && id !== "" && id.length <= CHALLENGE_ID_MAX_LENGTH ? id : null;
+}
+
+function parseSetup(body: unknown): TotpSetup | null {
+  if (!isRecord(body)) return null;
+  const { secret, otpauthUri } = body;
+  if (typeof secret !== "string" || typeof otpauthUri !== "string") return null;
+  if (!/^[A-Z2-7]+$/.test(secret) || !otpauthUri.startsWith("otpauth://totp/")) return null;
+  return { secret, otpauthUri };
+}
+
+function parseStatus(body: unknown): TotpStatus | null {
+  if (!isRecord(body) || typeof body.enabled !== "boolean") return null;
+  return { enabled: body.enabled, confirmedAt: typeof body.confirmedAt === "string" ? body.confirmedAt : null };
+}
+
 /** Endpoints de /api/auth sobre la función HTTP base. */
 export function createAuthApi(http: HttpRequest) {
   return {
@@ -69,8 +122,9 @@ export function createAuthApi(http: HttpRequest) {
         if (res.status === 401 || res.status === 400) return { kind: "invalid" };
         if (res.status === 429) return { kind: "rate-limited" };
         if (res.status === 403) {
-          const body = await readJson(res);
-          if (isRecord(body) && body.code === CHALLENGE_REQUIRED) return { kind: "challenge" };
+          // Sin challengeId válido no hay forma de continuar: se trata como error.
+          const challengeId = parseChallengeId(await readJson(res));
+          if (challengeId) return { kind: "challenge", challengeId };
         }
         return { kind: "error" };
       } catch {
@@ -106,6 +160,59 @@ export function createAuthApi(http: HttpRequest) {
         await http("/api/auth/logout", { method: "POST" });
       } catch {
         // Sin red: la sesión local se borra igual.
+      }
+    },
+
+    /** Segundo paso del login en zona CHALLENGE. */
+    async verifyChallenge(challengeId: string, code: string): Promise<VerifyResult> {
+      try {
+        const res = await http("/api/auth/2fa/verify", { method: "POST", json: { challengeId, code } });
+        if (res.ok) {
+          const token = parseToken(await readJson(res));
+          return token ? { kind: "ok", token } : { kind: "error" };
+        }
+        if (res.status === 401 || res.status === 400) return { kind: "invalid" };
+        return { kind: "error" };
+      } catch {
+        return { kind: "error" };
+      }
+    },
+
+    async totpStatus(token: string): Promise<TotpStatusResult> {
+      try {
+        const res = await http("/api/auth/2fa/status", { token });
+        if (res.status === 401) return { kind: "unauthorized" };
+        if (!res.ok) return { kind: "error" };
+        const status = parseStatus(await readJson(res));
+        return status ? { kind: "ok", status } : { kind: "error" };
+      } catch {
+        return { kind: "error" };
+      }
+    },
+
+    async totpSetup(token: string): Promise<TotpSetupResult> {
+      try {
+        const res = await http("/api/auth/2fa/setup", { method: "POST", token });
+        if (res.status === 401) return { kind: "unauthorized" };
+        if (res.status === 409) return { kind: "already-enabled" };
+        if (!res.ok) return { kind: "error" };
+        const setup = parseSetup(await readJson(res));
+        return setup ? { kind: "ok", setup } : { kind: "error" };
+      } catch {
+        return { kind: "error" };
+      }
+    },
+
+    async totpEnable(token: string, code: string): Promise<TotpEnableResult> {
+      try {
+        const res = await http("/api/auth/2fa/enable", { method: "POST", token, json: { code } });
+        if (res.status === 204 || res.ok) return { kind: "ok" };
+        if (res.status === 401) return { kind: "unauthorized" };
+        if (res.status === 400) return { kind: "invalid" };
+        if (res.status === 409) return { kind: "already-enabled" };
+        return { kind: "error" };
+      } catch {
+        return { kind: "error" };
       }
     },
 
