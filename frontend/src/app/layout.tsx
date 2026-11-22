@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AuthShield",
+  title: { default: "AuthShield", template: "%s · AuthShield" },
   description: "Motor de autenticación adaptativa basado en riesgo",
 };
 
