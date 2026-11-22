@@ -5,7 +5,7 @@ import com.authrisk.domain.risk.LoginBlockedException
 import com.authrisk.domain.token.InvalidRefreshTokenException
 import com.authrisk.domain.totp.InvalidTotpCodeException
 import com.authrisk.domain.totp.TotpAlreadyEnabledException
-import com.authrisk.infrastructure.web.auth.CodedErrorResponse
+import com.authrisk.infrastructure.web.auth.ChallengeResponse
 import com.authrisk.domain.user.InvalidCredentialsException
 import com.authrisk.domain.user.InvalidEmailException
 import com.authrisk.domain.user.UserNotFoundException
@@ -38,9 +38,11 @@ class ApiExceptionHandler(private val cookies: RefreshCookieFactory) {
     fun blocked(): ResponseEntity<ErrorResponse> =
         ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ErrorResponse(TOO_MANY_ATTEMPTS))
 
+    // Misma forma sea la contraseña correcta o no: solo cambia el challengeId aleatorio.
     @ExceptionHandler(ChallengeRequiredException::class)
-    fun challenge(): ResponseEntity<CodedErrorResponse> =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(CodedErrorResponse(CHALLENGE_REQUIRED_MESSAGE, CHALLENGE_REQUIRED))
+    fun challenge(ex: ChallengeRequiredException): ResponseEntity<ChallengeResponse> =
+        ResponseEntity.status(HttpStatus.FORBIDDEN)
+            .body(ChallengeResponse(CHALLENGE_REQUIRED_MESSAGE, CHALLENGE_REQUIRED, ex.challengeId))
 
     @ExceptionHandler(InvalidRefreshTokenException::class)
     fun invalidRefresh(ex: InvalidRefreshTokenException): ResponseEntity<ErrorResponse> {

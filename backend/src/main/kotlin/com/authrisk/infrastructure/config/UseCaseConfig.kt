@@ -7,6 +7,7 @@ import com.authrisk.application.auth.RefreshUseCase
 import com.authrisk.application.auth.RegisterUseCase
 import com.authrisk.application.auth.SessionTokenFactory
 import com.authrisk.application.port.TransactionRunner
+import com.authrisk.application.twofactor.LoginChallengeIssuer
 import com.authrisk.domain.port.LoginAttemptRepository
 import com.authrisk.domain.port.PasswordHasher
 import com.authrisk.domain.port.RiskCounters
@@ -51,6 +52,7 @@ class UseCaseConfig {
         riskEngine: RiskEngine,
         riskCounters: RiskCounters,
         loginAttempts: LoginAttemptRepository,
+        challenges: LoginChallengeIssuer,
         tx: TransactionRunner,
         clock: Clock,
         riskProps: RiskProperties,
@@ -58,7 +60,9 @@ class UseCaseConfig {
     ): LoginUseCase {
         val riskEnabled = riskProps.effectiveEnabled(demoMode)
         if (!riskEnabled) log.warn("MOTOR DE RIESGO DESACTIVADO (app.risk.enabled=false): todo login es ALLOW. Solo para demos.")
-        return LoginUseCase(users, refreshTokens, hasher, sessionTokens, riskEngine, riskCounters, loginAttempts, tx, clock, riskEnabled)
+        return LoginUseCase(
+            users, refreshTokens, hasher, sessionTokens, riskEngine, riskCounters, loginAttempts, challenges, tx, clock, riskEnabled,
+        )
     }
 
     @Bean

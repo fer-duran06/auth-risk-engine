@@ -1,6 +1,5 @@
 package com.authrisk.infrastructure.web.auth
 
-import com.authrisk.application.auth.AuthTokens
 import com.authrisk.application.auth.GetCurrentUserUseCase
 import com.authrisk.application.auth.LoginUseCase
 import com.authrisk.application.auth.LogoutUseCase
@@ -23,8 +22,6 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-import java.time.Clock
-import java.time.Duration
 import java.util.UUID
 
 @Tag(name = "Autenticación")
@@ -37,8 +34,8 @@ class AuthController(
     private val logout: LogoutUseCase,
     private val currentUser: GetCurrentUserUseCase,
     private val cookies: RefreshCookieFactory,
+    private val sessions: SessionResponses,
     private val clientIp: ClientIpResolver,
-    private val clock: Clock,
 ) {
 
     @Operation(summary = "Registra un usuario. Respuesta idéntica exista o no el email.")
@@ -48,15 +45,18 @@ class AuthController(
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(MessageResponse(REGISTER_MESSAGE))
     }
 
-    @Operation(summary = "Inicia sesión: devuelve el access token y fija la cookie de refresh.")
+    @Operation(
+        summary = "Inicia sesión: devuelve el access token y fija la cookie de refresh. " +
+            "En zona CHALLENGE responde 403 CHALLENGE_REQUIRED con un challengeId para /2fa/verify.",
+    )
     @PostMapping("/login")
     fun login(@Valid @RequestBody body: LoginRequest, request: HttpServletRequest): ResponseEntity<TokenResponse> =
-        tokensResponse(login.execute(body.email, body.password, clientIp.resolve(request)))
+        sessions.tokens(login.execute(body.email, body.password, clientIp.resolve(request)))
 
     @Operation(summary = "Rota el refresh token de la cookie y emite un access token nuevo.")
     @PostMapping("/refresh")
     fun refresh(@CookieValue(RefreshCookieFactory.NAME, required = false) refreshToken: String?): ResponseEntity<TokenResponse> =
-        tokensResponse(refresh.execute(refreshToken))
+        sessions.tokens(refresh.execute(refreshToken))
 
     @Operation(summary = "Cierra la sesión: revoca la familia del refresh token y borra la cookie.")
     @PostMapping("/logout")
@@ -69,13 +69,6 @@ class AuthController(
     @GetMapping("/me")
     fun me(@AuthenticationPrincipal jwt: Jwt): UserResponse =
         UserResponse.from(currentUser.execute(UUID.fromString(jwt.subject)))
-
-    private fun tokensResponse(tokens: AuthTokens): ResponseEntity<TokenResponse> {
-        val expiresIn = Duration.between(clock.instant(), tokens.accessToken.expiresAt).seconds.coerceAtLeast(0)
-        return ResponseEntity.ok()
-            .header(HttpHeaders.SET_COOKIE, cookies.create(tokens.refreshToken, tokens.refreshTokenExpiresAt).toString())
-            .body(TokenResponse(accessToken = tokens.accessToken.value, expiresIn = expiresIn))
-    }
 
     companion object {
         const val REGISTER_MESSAGE = "Si los datos son válidos, la cuenta quedó registrada. Ya puedes iniciar sesión."

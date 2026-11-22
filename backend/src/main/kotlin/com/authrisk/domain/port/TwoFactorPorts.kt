@@ -41,5 +41,5 @@ interface LoginChallengeRepository {
 /** Identificadores opacos de alta entropía y el hash con el que se almacenan. */
 interface ChallengeIdGenerator {
     fun generate(): String
-    fun hash(rawId: String): String
+    fun hash(rawToken: String): String
 }

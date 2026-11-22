@@ -1,6 +1,12 @@
 package com.authrisk.application.auth
 
 import com.authrisk.application.port.TransactionRunner
+import com.authrisk.application.twofactor.LoginChallengeIssuer
+import com.authrisk.application.twofactor.VerifyLoginChallengeUseCase
+import com.authrisk.domain.port.ChallengeIdGenerator
+import com.authrisk.domain.port.LoginChallengeRepository
+import com.authrisk.domain.totp.LoginChallenge
+import com.authrisk.domain.totp.Totp
 import com.authrisk.domain.port.LoginAttemptRepository
 import com.authrisk.domain.port.PasswordHasher
 import com.authrisk.domain.port.RiskCounters
@@ -128,8 +134,22 @@ class AuthFixture(riskEnabled: Boolean = true) {
         RiskPolicy(),
     )
 
+    val challenges = InMemoryLoginChallengeRepository()
+    val challengeIds = SequentialChallengeIdGenerator()
+    val totpRepo = InMemoryUserTotpRepository()
+    val cipher = FakeTotpSecretCipher()
+    val totp = Totp()
+    val challengeTtl: Duration = Duration.ofMinutes(5)
+    val maxVerifyAttempts = 5
+    val challengeIssuer = LoginChallengeIssuer(challenges, challengeIds, tx, clock, challengeTtl)
+
     val register = RegisterUseCase(users, hasher, tx, clock)
-    val login = LoginUseCase(users, refreshTokens, hasher, sessions, riskEngine, riskCounters, loginAttempts, tx, clock, riskEnabled)
+    val login = LoginUseCase(
+        users, refreshTokens, hasher, sessions, riskEngine, riskCounters, loginAttempts, challengeIssuer, tx, clock, riskEnabled,
+    )
+    val verify = VerifyLoginChallengeUseCase(
+        challenges, challengeIds, totpRepo, cipher, totp, users, refreshTokens, sessions, loginAttempts, tx, clock, maxVerifyAttempts,
+    )
     val refresh = RefreshUseCase(users, refreshTokens, generator, sessions, tx, clock)
     val logout = LogoutUseCase(refreshTokens, generator, tx, clock)
     val currentUser = GetCurrentUserUseCase(users)
@@ -210,4 +230,34 @@ class FakeTotpSecretCipher : TotpSecretCipher {
         check(owner == userId.toString()) { "secreto de otro usuario" }
         return Base64.getDecoder().decode(data)
     }
+}
+
+class InMemoryLoginChallengeRepository : LoginChallengeRepository {
+    val rows = linkedMapOf<UUID, LoginChallenge>()
+    /** Simula un fallo del almacenamiento al guardar. */
+    var failing = false
+
+    override fun save(challenge: LoginChallenge) {
+        if (failing) throw IllegalStateException("BD caída")
+        rows[challenge.id] = challenge
+    }
+
+    override fun findByHashForUpdate(idHash: String) = rows.values.firstOrNull { it.idHash == idHash }
+
+    override fun update(challenge: LoginChallenge) {
+        check(rows.containsKey(challenge.id))
+        rows[challenge.id] = challenge
+    }
+
+    override fun deleteClosed(now: Instant): Int {
+        val closed = rows.values.filter { !now.isBefore(it.expiresAt) || it.consumedAt != null }.map { it.id }
+        closed.forEach(rows::remove)
+        return closed.size
+    }
+}
+
+class SequentialChallengeIdGenerator : ChallengeIdGenerator {
+    private var counter = 0
+    override fun generate() = "challenge-${++counter}"
+    override fun hash(rawToken: String) = "sha:$rawToken"
 }

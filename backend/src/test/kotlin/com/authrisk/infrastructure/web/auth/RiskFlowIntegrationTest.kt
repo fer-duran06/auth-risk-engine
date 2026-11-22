@@ -77,12 +77,13 @@ class RiskFlowIntegrationTest : IntegrationTestBase() {
             status { isForbidden() }
             jsonPath("$.error") { value("Verificación adicional requerida") }
             jsonPath("$.code") { value("CHALLENGE_REQUIRED") }
+            jsonPath("$.challengeId") { isString() }
             jsonPath("$.accessToken") { doesNotExist() }
         }.andReturn()
         assertNull(challenged.response.getHeader(HttpHeaders.SET_COOKIE))
 
-        // 12-20: siguen fallando en CHALLENGE (contraseña errónea -> 401 de siempre).
-        repeat(9) { login(newEmail(), attackerIp, "incorrecta-1234").andExpect { status { isUnauthorized() } } }
+        // 12-20: en CHALLENGE la contraseña errónea también recibe 403 (no se revela cuál era correcta).
+        repeat(9) { login(newEmail(), attackerIp, "incorrecta-1234").andExpect { status { isForbidden() } } }
 
         // 21: 20 intentos globales con 19 fallos suma GLOBAL_FAILURE_RATE (15) -> 70, BLOCK.
         // La contraseña correcta ya no se verifica, y la respuesta es idéntica para un email inexistente.

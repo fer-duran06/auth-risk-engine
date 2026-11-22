@@ -34,6 +34,9 @@ class LoginAttemptJpaEntity(
     var success: Boolean,
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant,
+    /** PASSWORD (login) o TOTP (verificación del desafío). */
+    @Column(nullable = false, length = 8)
+    var stage: String,
 ) {
     companion object {
         fun from(a: LoginAttempt) = LoginAttemptJpaEntity(
@@ -45,6 +48,7 @@ class LoginAttemptJpaEntity(
             triggeredRules = a.assessment.triggeredRules.toTypedArray(),
             success = a.success,
             createdAt = a.createdAt,
+            stage = a.stage.name,
         )
     }
 }

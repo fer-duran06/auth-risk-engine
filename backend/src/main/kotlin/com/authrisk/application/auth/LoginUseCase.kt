@@ -1,6 +1,7 @@
 package com.authrisk.application.auth
 
 import com.authrisk.application.port.TransactionRunner
+import com.authrisk.application.twofactor.LoginChallengeIssuer
 import com.authrisk.domain.port.LoginAttemptRepository
 import com.authrisk.domain.port.PasswordHasher
 import com.authrisk.domain.port.RefreshTokenRepository
@@ -22,7 +23,9 @@ import java.util.UUID
 /**
  * Login con evaluación de riesgo previa a la verificación de la contraseña:
  * - BLOCK: se rechaza sin buscar al usuario ni verificar la contraseña.
- * - CHALLENGE: se verifica la contraseña, pero si es correcta no se emiten tokens (falta 2FA).
+ * - CHALLENGE: se verifica la contraseña, pero nunca se emiten tokens. La respuesta es siempre la
+ *   misma (un desafío con challengeId), sea la contraseña correcta o no y exista o no el email;
+ *   el resultado queda guardado en el servidor y solo se completa con un TOTP válido.
  * - ALLOW: flujo normal; abre una sesión nueva (nueva familia de refresh tokens).
  * Si los contadores no responden se aplica el fail-safe (CHALLENGE).
  * Con [riskEnabled] en false (solo modo demo, para comparar con y sin protección) no se leen ni
@@ -39,6 +42,7 @@ class LoginUseCase(
     private val riskEngine: RiskEngine,
     private val riskCounters: RiskCounters,
     private val loginAttempts: LoginAttemptRepository,
+    private val challenges: LoginChallengeIssuer,
     private val tx: TransactionRunner,
     private val clock: Clock,
     private val riskEnabled: Boolean = true,
@@ -66,14 +70,17 @@ class LoginUseCase(
         } else {
             passwordHasher.matches(rawPassword, user.passwordHash)
         }
+        val valid = user != null && passwordOk
+
+        if (risk.zone == RiskZone.CHALLENGE) {
+            // Mismo trabajo y misma respuesta en ambos casos: solo el registro interno distingue.
+            finish(if (valid) LoginOutcome.CHALLENGED else LoginOutcome.FAILURE)
+            throw ChallengeRequiredException(challenges.issue(user?.id, valid, attemptedEmail, ip, risk))
+        }
+
         if (user == null || !passwordOk) {
             finish(LoginOutcome.FAILURE)
             throw InvalidCredentialsException()
-        }
-
-        if (risk.zone == RiskZone.CHALLENGE) {
-            finish(LoginOutcome.CHALLENGED)
-            throw ChallengeRequiredException()
         }
 
         val issued = sessionTokens.issue(user, familyId = UUID.randomUUID(), now = clock.instant())

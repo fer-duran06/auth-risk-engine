@@ -50,8 +50,22 @@ data class MessageResponse(val message: String)
 
 data class ErrorResponse(val error: String, val details: List<String> = emptyList())
 
-/** Error con código estable para que el cliente decida el siguiente paso (p. ej. pedir 2FA). */
-data class CodedErrorResponse(val error: String, val code: String)
+/**
+ * 403 de la zona CHALLENGE: código estable para que el cliente pida el TOTP y el challengeId
+ * opaco de un solo uso con el que se verifica.
+ */
+data class ChallengeResponse(val error: String, val code: String, val challengeId: String) {
+    override fun toString(): String = "ChallengeResponse(code=$code)"
+}
+
+data class VerifyChallengeRequest(
+    @field:NotBlank @field:Size(max = 128)
+    val challengeId: String,
+    @field:NotBlank @field:Size(max = 16)
+    val code: String,
+) {
+    override fun toString(): String = "VerifyChallengeRequest(***)"
+}
 
 data class TotpCodeRequest(
     @field:NotBlank @field:Size(max = 16)

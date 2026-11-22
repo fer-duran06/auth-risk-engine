@@ -1,7 +1,10 @@
 package com.authrisk.infrastructure.web.auth
 
 import com.authrisk.IntegrationTestBase
+import com.authrisk.domain.port.TotpSecretCipher
 import com.authrisk.domain.risk.RiskAssessment
+import com.authrisk.domain.totp.Totp
+import com.authrisk.infrastructure.persistence.UserJpaRepository
 import com.authrisk.infrastructure.persistence.LoginAttemptJpaRepository
 import com.authrisk.infrastructure.web.ClientIpResolver
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -11,12 +14,14 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.post
 import java.net.ServerSocket
 import java.security.SecureRandom
+import java.time.Instant
 import java.util.Base64
 import java.util.UUID
 import kotlin.test.assertEquals
@@ -55,8 +60,11 @@ class RedisDownIntegrationTest {
         }.andReturn()
         assertNull(result.response.getHeader(HttpHeaders.SET_COOKIE))
 
-        // La contraseña incorrecta sigue siendo un 401 normal.
-        post("/api/auth/login", email, "incorrecta-1234", ip).andExpect { status { isUnauthorized() } }
+        // La contraseña incorrecta recibe el mismo 403: en CHALLENGE no se revela cuál es correcta.
+        post("/api/auth/login", email, "incorrecta-1234", ip).andExpect {
+            status { isForbidden() }
+            jsonPath("$.code") { value("CHALLENGE_REQUIRED") }
+        }
 
         val rows = attempts.findByIpOrderByCreatedAtAsc(ip).filter { it.email == email }
         assertEquals(2, rows.size)
@@ -64,6 +72,39 @@ class RedisDownIntegrationTest {
             assertEquals("CHALLENGE", it.zone)
             assertNull(it.score)
             assertEquals(listOf(RiskAssessment.COUNTERS_UNAVAILABLE), it.triggeredRules.toList())
+        }
+    }
+
+    @Autowired lateinit var users: UserJpaRepository
+    @Autowired lateinit var cipher: TotpSecretCipher
+    @Autowired lateinit var jdbc: JdbcTemplate
+
+    @Test
+    fun `con Redis caído el desafío vive en PostgreSQL y un usuario con 2FA puede completarlo`() {
+        val email = "user-${UUID.randomUUID()}@example.com"
+        val ip = "10.255.0.2"
+        post("/api/auth/register", email, password, ip).andExpect { status { isAccepted() } }
+        // Sin Redis todo login es CHALLENGE, así que el 2FA se activa directamente en BD.
+        val userId = users.findByEmail(email)!!.id
+        val secret = Totp.newSecret()
+        jdbc.update(
+            "INSERT INTO user_totp (user_id, secret_encrypted, enabled, confirmed_at, created_at) VALUES (?, ?, TRUE, now(), now())",
+            userId, cipher.encrypt(userId, secret),
+        )
+
+        val challengeId = json.readTree(
+            post("/api/auth/login", email, password, ip).andExpect { status { isForbidden() } }.andReturn().response.contentAsString,
+        )["challengeId"].asText()
+        val totp = Totp()
+        mvc.post("/api/auth/2fa/verify") {
+            contentType = MediaType.APPLICATION_JSON
+            header(ClientIpResolver.SIMULATED_IP_HEADER, ip)
+            content = json.writeValueAsString(
+                mapOf("challengeId" to challengeId, "code" to totp.generate(secret, totp.stepAt(Instant.now()))),
+            )
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.accessToken") { isString() }
         }
     }
 

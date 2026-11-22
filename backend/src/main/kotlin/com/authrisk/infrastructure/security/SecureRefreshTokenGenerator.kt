@@ -1,5 +1,6 @@
 package com.authrisk.infrastructure.security
 
+import com.authrisk.domain.port.ChallengeIdGenerator
 import com.authrisk.domain.port.RefreshTokenGenerator
 import org.springframework.stereotype.Component
 import java.security.MessageDigest
@@ -10,9 +11,10 @@ import java.util.HexFormat
 /**
  * Refresh tokens de 256 bits aleatorios (base64url). Se almacenan como SHA-256: al tener alta entropía
  * no necesitan un hash lento con sal, y el hash determinista permite buscarlos por índice.
+ * El challengeId de la zona CHALLENGE tiene los mismos requisitos y usa este mismo generador.
  */
 @Component
-class SecureRefreshTokenGenerator : RefreshTokenGenerator {
+class SecureRefreshTokenGenerator : RefreshTokenGenerator, ChallengeIdGenerator {
     private val random = SecureRandom()
 
     override fun generate(): String {

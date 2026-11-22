@@ -32,6 +32,9 @@ data class RiskAssessment(val score: Int?, val zone: RiskZone, val triggeredRule
         const val COUNTERS_UNAVAILABLE = "COUNTERS_UNAVAILABLE"
         const val RISK_DISABLED = "RISK_DISABLED"
 
+        /** Verificación 2FA con un challengeId inexistente, vencido, ya usado o sin intentos. */
+        const val CHALLENGE_INVALID = "CHALLENGE_INVALID"
+
         /** Contadores no disponibles: se exige verificación adicional, nunca se permite directamente. */
         fun failSafe() = RiskAssessment(null, RiskZone.CHALLENGE, listOf(COUNTERS_UNAVAILABLE))
 
@@ -48,7 +51,7 @@ enum class LoginOutcome {
     /** Usuario inexistente o contraseña incorrecta. */
     FAILURE,
 
-    /** Contraseña correcta, pero se exigió verificación adicional (sin tokens). */
+    /** Contraseña correcta, pero se exigió el segundo factor (sin tokens todavía). */
     CHALLENGED,
 
     /** Bloqueado antes de verificar la contraseña. */
@@ -64,6 +67,15 @@ enum class LoginOutcome {
     val countsAsGlobalFailure: Boolean get() = this == FAILURE
 }
 
+/** Paso del login al que corresponde un intento. */
+enum class LoginStage {
+    /** Email y contraseña (POST /api/auth/login). */
+    PASSWORD,
+
+    /** Código TOTP de un desafío (POST /api/auth/2fa/verify). */
+    TOTP,
+}
+
 /** Registro de un intento con su evaluación, para el administrador. */
 data class LoginAttempt(
     val id: UUID,
@@ -73,6 +85,7 @@ data class LoginAttempt(
     val assessment: RiskAssessment,
     val outcome: LoginOutcome,
     val createdAt: Instant,
+    val stage: LoginStage = LoginStage.PASSWORD,
 ) {
     val success: Boolean get() = outcome == LoginOutcome.SUCCESS
 }
