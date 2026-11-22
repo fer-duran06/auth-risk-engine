@@ -4,7 +4,8 @@ Proyecto académico (Seguridad Informática). API que evalúa el riesgo de cada 
 **ALLOW / CHALLENGE (2FA TOTP) / BLOCK** para mitigar ataques de *credential stuffing*. Incluye frontend web,
 dashboard de administración y un simulador de ataque. Uso exclusivamente académico y defensivo.
 
-> Estado: **Fase 3**: autenticación (JWT + refresh rotativo), motor de riesgo y frontend de login, registro y `/me`.
+> Estado: autenticación (JWT + refresh rotativo), motor de riesgo, frontend de login, registro y `/me` (Fase 3)
+> y simulador de ataque con comparación con y sin protección (Fase 7).
 > Detalle por fase en [`docs/`](docs/README.md).
 
 ## Estructura
