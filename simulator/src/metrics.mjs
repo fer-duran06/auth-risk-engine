@@ -45,8 +45,8 @@ export function summarize(scenario, attempts, durationMs) {
     legitDenied: isAttack ? null : attempts.filter((a) => a.valid && a.status !== 200).length,
     durationMs,
     effectiveRate: durationMs > 0 ? round(attempts.length / (durationMs / 1000)) : 0,
-    /** Secuencia compacta de respuestas, para ver dónde cambia de zona. */
-    timeline: attempts.map((a) => a.status).join(","),
+    /** Secuencia compacta de respuestas (p. ej. "401×8, 403, 429×140"), para ver dónde cambia de zona. */
+    timeline: compactTimeline(attempts.map((a) => a.status)),
   };
 }
 
@@ -66,6 +66,17 @@ export function checkMode(mode, results) {
   const network = results.reduce((acc, r) => acc + r.status.otros, 0);
   if (network > 0) warnings.push(`${network} respuestas inesperadas (errores de red u otros códigos).`);
   return warnings;
+}
+
+/** Codifica rachas iguales: [401, 401, 403] → "401×2, 403". */
+export function compactTimeline(statuses) {
+  const runs = [];
+  for (const s of statuses) {
+    const last = runs.at(-1);
+    if (last && last.s === s) last.n++;
+    else runs.push({ s, n: 1 });
+  }
+  return runs.map(({ s, n }) => (n > 1 ? `${s}×${n}` : `${s}`)).join(", ");
 }
 
 function round(x) {

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createClient } from "../src/client.mjs";
 import { buildDataset, COMMON_PASSWORD, SIZES } from "../src/dataset.mjs";
-import { checkMode, summarize } from "../src/metrics.mjs";
+import { checkMode, compactTimeline, summarize } from "../src/metrics.mjs";
 import { validateBaseUrl } from "../src/target.mjs";
 
 describe("objetivo permitido", () => {
@@ -82,6 +82,11 @@ describe("métricas", () => {
     assert.equal(s.validTried, 3);
     assert.equal(s.falsePositives, null);
     assert.equal(s.effectiveRate, 7);
+  });
+
+  it("la secuencia de respuestas se compacta por rachas", () => {
+    assert.equal(compactTimeline([401, 401, 401, 403, 401, 429, 429]), "401×3, 403, 401, 429×2");
+    assert.equal(compactTimeline([]), "");
   });
 
   it("legítimo: falsos positivos y usuarios rechazados", () => {
