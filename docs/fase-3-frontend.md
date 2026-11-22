@@ -27,7 +27,7 @@ Respuestas del login:
 |---|---|
 | `200` | Se guarda el token y se redirige a `/me`. |
 | `401` / `400` | "Credenciales inválidas". |
-| `403` con `code: CHALLENGE_REQUIRED` | "Verificación adicional requerida". El 2FA aparece como pendiente. |
+| `403` con `code: CHALLENGE_REQUIRED` | Desde la Fase 4: va a `/login/verify` con el `challengeId` en memoria ([fase-4-2fa.md](fase-4-2fa.md)). |
 | `429` | "Demasiados intentos. Intenta más tarde." |
 | `5xx`, red caída u otro código | Mensaje genérico de error. |
 

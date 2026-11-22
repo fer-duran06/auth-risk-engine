@@ -21,7 +21,7 @@ El score es la suma de los pesos, acotada a 100. Los umbrales se configuran en `
 | Zona | Score | Respuesta |
 |---|---|---|
 | ALLOW | < 30 | Flujo normal: `200` con tokens (o `401` si la contraseña es incorrecta). |
-| CHALLENGE | 30–69 | Se verifica la contraseña. Si es correcta: `403 {"error":"Verificación adicional requerida","code":"CHALLENGE_REQUIRED"}`, sin tokens. Si es incorrecta: el `401` de siempre. |
+| CHALLENGE | 30–69 | Se verifica la contraseña. Si es correcta: `403 {"error":"Verificación adicional requerida","code":"CHALLENGE_REQUIRED"}`, sin tokens. Si es incorrecta: el `401` de siempre. **Reemplazado en la Fase 4:** ahora siempre responde `403` con `challengeId`, sea la contraseña correcta o no ([fase-4-2fa.md](fase-4-2fa.md)). |
 | BLOCK | ≥ 70 | `429 {"error":"Demasiados intentos. Intenta más tarde."}`. No se busca al usuario ni se ejecuta Argon2. |
 
 Ejemplo con los valores por defecto: una IP que prueba emails distintos queda en ALLOW (25) desde el 6.º intento, en CHALLENGE (55) desde el 11.º y en BLOCK (70) cuando la tasa global supera el 50 % con 20 intentos o más.
