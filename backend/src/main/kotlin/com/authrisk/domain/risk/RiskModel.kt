@@ -30,9 +30,13 @@ data class RiskSignals(
 data class RiskAssessment(val score: Int?, val zone: RiskZone, val triggeredRules: List<String>) {
     companion object {
         const val COUNTERS_UNAVAILABLE = "COUNTERS_UNAVAILABLE"
+        const val RISK_DISABLED = "RISK_DISABLED"
 
         /** Contadores no disponibles: se exige verificación adicional, nunca se permite directamente. */
         fun failSafe() = RiskAssessment(null, RiskZone.CHALLENGE, listOf(COUNTERS_UNAVAILABLE))
+
+        /** Motor desactivado (solo para comparar en demos): se permite sin evaluar y queda marcado. */
+        fun disabled() = RiskAssessment(0, RiskZone.ALLOW, listOf(RISK_DISABLED))
     }
 }
 

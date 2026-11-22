@@ -66,6 +66,8 @@ app:
   # Motor de riesgo. Cada regla suma su peso si su contador llega al umbral dentro de la ventana.
   # Los contadores son de intentos previos (no incluyen el intento que se evalúa).
   risk:
+    # false omite la evaluación (todo ALLOW, sin Redis). Solo para el simulador; exige demo-mode=true.
+    enabled: ${RISK_ENABLED:true}
     thresholds:
       challenge: 30   # score >= 30 -> CHALLENGE
       block: 70       # score >= 70 -> BLOCK (el score se acota a 100)

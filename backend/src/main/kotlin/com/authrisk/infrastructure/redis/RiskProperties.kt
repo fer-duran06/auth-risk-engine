@@ -12,9 +12,11 @@ import java.time.Duration
 /**
  * Configuración del motor de riesgo (prefijo `app.risk`): umbrales de zona, y peso, umbral y
  * ventana de cada regla. Los valores inválidos hacen fallar el arranque (validación del dominio).
+ * [enabled] en false desactiva la evaluación; solo se admite con `app.demo-mode=true`.
  */
 @ConfigurationProperties(prefix = "app.risk")
 data class RiskProperties(
+    val enabled: Boolean = true,
     val thresholds: Thresholds = Thresholds(),
     val rules: Rules = Rules(),
 ) {
@@ -43,6 +45,15 @@ data class RiskProperties(
         init {
             require(window >= Duration.ofMinutes(1)) { "La ventana global debe ser de al menos 1 minuto" }
         }
+    }
+
+    /**
+     * Devuelve si el motor está activo. Desactivarlo fuera del modo demo impide el arranque:
+     * así un error de configuración nunca deja el login de un entorno real sin protección.
+     */
+    fun effectiveEnabled(demoMode: Boolean): Boolean {
+        check(enabled || demoMode) { "app.risk.enabled=false solo se permite con app.demo-mode=true" }
+        return enabled
     }
 
     fun toEngine() = RiskEngine(

@@ -17,6 +17,8 @@ import com.authrisk.domain.port.RefreshTokenRepository
 import com.authrisk.domain.port.TokenIssuer
 import com.authrisk.domain.port.UserRepository
 import com.authrisk.infrastructure.security.AuthProperties
+import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import java.time.Clock
@@ -24,6 +26,7 @@ import java.time.Clock
 /** Registra los casos de uso (Kotlin puro) como beans de Spring. */
 @Configuration
 class UseCaseConfig {
+    private val log = LoggerFactory.getLogger(javaClass)
 
     @Bean
     fun clock(): Clock = Clock.systemUTC()
@@ -50,7 +53,13 @@ class UseCaseConfig {
         loginAttempts: LoginAttemptRepository,
         tx: TransactionRunner,
         clock: Clock,
-    ) = LoginUseCase(users, refreshTokens, hasher, sessionTokens, riskEngine, riskCounters, loginAttempts, tx, clock)
+        riskProps: RiskProperties,
+        @Value("\${app.demo-mode:false}") demoMode: Boolean,
+    ): LoginUseCase {
+        val riskEnabled = riskProps.effectiveEnabled(demoMode)
+        if (!riskEnabled) log.warn("MOTOR DE RIESGO DESACTIVADO (app.risk.enabled=false): todo login es ALLOW. Solo para demos.")
+        return LoginUseCase(users, refreshTokens, hasher, sessionTokens, riskEngine, riskCounters, loginAttempts, tx, clock, riskEnabled)
+    }
 
     @Bean
     fun refreshUseCase(

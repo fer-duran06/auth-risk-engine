@@ -25,6 +25,8 @@ import java.util.UUID
  * - CHALLENGE: se verifica la contraseña, pero si es correcta no se emiten tokens (falta 2FA).
  * - ALLOW: flujo normal; abre una sesión nueva (nueva familia de refresh tokens).
  * Si los contadores no responden se aplica el fail-safe (CHALLENGE).
+ * Con [riskEnabled] en false (solo modo demo, para comparar con y sin protección) no se leen ni
+ * escriben contadores: todo intento es ALLOW y se registra con la regla RISK_DISABLED.
  *
  * Usuario inexistente y contraseña incorrecta producen la misma excepción; en el primer caso
  * se verifica contra un hash ficticio para igualar el costo de Argon2.
@@ -39,6 +41,7 @@ class LoginUseCase(
     private val loginAttempts: LoginAttemptRepository,
     private val tx: TransactionRunner,
     private val clock: Clock,
+    private val riskEnabled: Boolean = true,
 ) {
     // Hash de un valor aleatorio descartado: nunca coincide con ninguna contraseña real.
     private val dummyHash: String = passwordHasher.hash(UUID.randomUUID().toString())
@@ -79,18 +82,22 @@ class LoginUseCase(
         return issued.tokens
     }
 
-    private fun assess(ip: String, email: String): RiskAssessment =
-        try {
+    private fun assess(ip: String, email: String): RiskAssessment {
+        if (!riskEnabled) return RiskAssessment.disabled()
+        return try {
             riskEngine.assess(riskCounters.read(ip, email))
         } catch (_: RiskCountersUnavailableException) {
             RiskAssessment.failSafe()
         }
+    }
 
     private fun record(email: String, ip: String, risk: RiskAssessment, outcome: LoginOutcome) {
-        try {
-            riskCounters.record(ip, email, outcome)
-        } catch (_: RiskCountersUnavailableException) {
-            // El adaptador ya registró el fallo; el intento igual queda guardado en BD.
+        if (riskEnabled) {
+            try {
+                riskCounters.record(ip, email, outcome)
+            } catch (_: RiskCountersUnavailableException) {
+                // El adaptador ya registró el fallo; el intento igual queda guardado en BD.
+            }
         }
         val attempt = LoginAttempt(UUID.randomUUID(), email, ip, risk, outcome, clock.instant())
         tx.inTransaction { loginAttempts.save(attempt) }

@@ -107,7 +107,7 @@ class MutableClock(var now: Instant = Instant.parse("2026-01-01T00:00:00Z")) : C
 }
 
 /** Arma todos los casos de uso sobre los mismos fakes. */
-class AuthFixture {
+class AuthFixture(riskEnabled: Boolean = true) {
     val clock = MutableClock()
     val users = InMemoryUserRepository()
     val refreshTokens = InMemoryRefreshTokenRepository()
@@ -125,7 +125,7 @@ class AuthFixture {
     )
 
     val register = RegisterUseCase(users, hasher, tx, clock)
-    val login = LoginUseCase(users, refreshTokens, hasher, sessions, riskEngine, riskCounters, loginAttempts, tx, clock)
+    val login = LoginUseCase(users, refreshTokens, hasher, sessions, riskEngine, riskCounters, loginAttempts, tx, clock, riskEnabled)
     val refresh = RefreshUseCase(users, refreshTokens, generator, sessions, tx, clock)
     val logout = LogoutUseCase(refreshTokens, generator, tx, clock)
     val currentUser = GetCurrentUserUseCase(users)
@@ -150,8 +150,10 @@ class FakeRiskCounters : RiskCounters {
     var signals = RiskSignals()
     var failing = false
     val recorded = mutableListOf<Triple<String, String, LoginOutcome>>()
+    var reads = 0
 
     override fun read(ip: String, email: String): RiskSignals {
+        reads++
         if (failing) throw RiskCountersUnavailableException()
         return signals
     }
