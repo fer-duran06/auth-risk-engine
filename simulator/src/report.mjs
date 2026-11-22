@@ -17,7 +17,6 @@ const COLUMNS = [
   ["1.er 429", (r) => dash(r.firstBlock)],
   ["Válidas", (r) => r.validTried],
   ["Comprometidas", (r) => dash(r.compromised)],
-  ["Confirmadas 403", (r) => dash(r.confirmedBy403)],
   ["Falsos +", (r) => dash(r.falsePositives)],
 ];
 
@@ -50,10 +49,10 @@ export function runMarkdown(run) {
     "",
     markdownTable(run.results),
     "",
-    "Columnas: *Comprometidas* = credenciales válidas que obtuvieron tokens (200). *Confirmadas 403* = credenciales válidas",
-    "que recibieron 403 CHALLENGE (sin tokens, pero el atacante sabe que son correctas). *Falsos +* = intentos legítimos",
-    "frenados con 403/429. *1.er 403 / 429* = número de intento del primer CHALLENGE / BLOCK visible para el cliente",
-    "(la zona CHALLENGE solo se ve con la contraseña correcta; con una incorrecta la respuesta sigue siendo 401).",
+    "Columnas: *Comprometidas* = credenciales válidas que obtuvieron tokens (200). *Falsos +* = intentos legítimos",
+    "frenados con 403/429. *1.er 403 / 429* = número de intento del primer CHALLENGE / BLOCK. En CHALLENGE la respuesta",
+    "es el mismo 403 sea la contraseña correcta o no (Fase 4): un 403 no le dice al atacante si la credencial es válida,",
+    "y sin el código TOTP de la víctima no obtiene tokens.",
     "",
     "## Escenarios",
     "",
@@ -64,7 +63,9 @@ export function runMarkdown(run) {
       "",
       `- Frenados (403/429): ${r.stopped} de ${r.attempts} (${r.stoppedPct} %) · duración ${(r.durationMs / 1000).toFixed(1)} s · ${r.effectiveRate} req/s reales`,
       ...(r.kind === "attack"
-        ? [`- Válidas en la lista: ${r.validTried} → comprometidas ${r.compromised}, confirmadas por 403 ${r.confirmedBy403}, bloqueadas con 429 ${r.validBlocked}`]
+        ? [
+            `- Válidas en la lista: ${r.validTried} → comprometidas ${r.compromised}, con 403 ${r.validChallenged} y con 429 ${r.validBlocked} (sin tokens; el atacante no las distingue de las incorrectas)`,
+          ]
         : [`- Falsos positivos: ${r.falsePositives} · usuarios con contraseña correcta rechazados: ${r.legitDenied}`]),
       `- Secuencia de respuestas: \`${r.timeline}\``,
       "",
@@ -103,7 +104,6 @@ export function compareMarkdown(unprotected, protectedRun) {
     "|---|---:|---:|",
     `| Credenciales válidas probadas por los atacantes | ${sum(unprotected, "validTried")} | ${validTotal} |`,
     `| Comprometidas (200 con tokens) | ${sum(unprotected, "compromised")} | ${sum(protectedRun, "compromised")} |`,
-    `| Confirmadas al atacante por 403 (sin tokens) | ${sum(unprotected, "confirmedBy403")} | ${sum(protectedRun, "confirmedBy403")} |`,
     `| Intentos de ataque frenados (403/429) | ${sum(unprotected, "stopped")} | ${sum(protectedRun, "stopped")} |`,
     `| Falsos positivos en tráfico legítimo | ${fp(unprotected)} | ${fp(protectedRun)} |`,
     "",
@@ -119,7 +119,6 @@ export function compareMarkdown(unprotected, protectedRun) {
     metric("1.er 403 (CHALLENGE)", (r) => r.firstChallenge),
     metric("1.er 429 (BLOCK)", (r) => r.firstBlock),
     metric("Comprometidas", (r) => r.compromised),
-    metric("Confirmadas 403", (r) => r.confirmedBy403),
     metric("Frenados %", (r) => r.stoppedPct),
     metric("Falsos positivos", (r) => r.falsePositives),
     "",

@@ -7,7 +7,7 @@ Diseño, resultados e interpretación: [`docs/fase-7-simulador.md`](../docs/fase
 
 - Node.js 22 o superior. No necesita `npm install`: no tiene dependencias.
 - Infraestructura levantada (`docker compose up -d`).
-- Backend con `app.demo-mode=true`; el perfil `dev` lo activa por defecto. Sin el modo demo, `X-Simulated-IP` se ignora y todos los escenarios comparten la IP 127.0.0.1.
+- Backend con `TOTP_ENCRYPTION_KEY` definida (obligatoria desde la Fase 4) y `app.demo-mode=true`; el perfil `dev` activa el modo demo por defecto. Sin el modo demo, `X-Simulated-IP` se ignora y todos los escenarios comparten la IP 127.0.0.1.
 
 ## Uso
 
@@ -48,6 +48,8 @@ Con el motor desactivado no se usa Redis, así que la corrida sin protección no
 ```bash
 docker exec authshield-redis sh -c 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli FLUSHALL'
 ```
+
+En CHALLENGE el backend responde siempre el mismo 403 con un `challengeId`, sea la contraseña correcta o no (Fase 4). Por eso el simulador ya no cuenta credenciales "confirmadas por 403": solo informa, como dato interno, cuántas válidas recibieron 403 o 429 sin tokens.
 
 ## Salida
 

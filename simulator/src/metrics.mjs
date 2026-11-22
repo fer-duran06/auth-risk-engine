@@ -35,8 +35,12 @@ export function summarize(scenario, attempts, durationMs) {
     validTried,
     /** Ataque: credenciales válidas que obtuvieron tokens (200). */
     compromised: isAttack ? status[200] : null,
-    /** Ataque: 403 en CHALLENGE, que solo ocurre con la contraseña correcta (el atacante la confirma). */
-    confirmedBy403: isAttack ? attempts.filter((a) => a.status === 403 && a.valid).length : null,
+    /**
+     * Ataque: válidas que recibieron 403 (sin tokens). Desde la Fase 4 el 403 de CHALLENGE es idéntico
+     * con contraseña correcta o incorrecta, así que el atacante no puede distinguirlas: solo el
+     * simulador lo sabe porque generó los datos. Ya no cuentan como "confirmadas".
+     */
+    validChallenged: isAttack ? attempts.filter((a) => a.status === 403 && a.valid).length : null,
     /** Ataque: válidas que recibieron 429 (el atacante no supo que eran correctas). */
     validBlocked: isAttack ? attempts.filter((a) => a.valid && a.status === 429).length : null,
     /** Legítimo: intentos frenados (403/429). Con contraseña correcta o con un error de tecleo. */

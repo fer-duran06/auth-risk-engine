@@ -71,13 +71,14 @@ describe("métricas", () => {
       valid: validAt.includes(i + 1),
     }));
 
-  it("ataque: conteos, primer CHALLENGE/BLOCK, comprometidas y confirmadas", () => {
+  it("ataque: conteos, primer CHALLENGE/BLOCK y comprometidas", () => {
     const s = summarize({ id: "b", name: "x", kind: "attack" }, at([401, 200, 401, 403, 401, 429, 429], [2, 4, 7]), 1000);
     assert.deepEqual(s.status, { 200: 1, 401: 3, 403: 1, 429: 2, otros: 0 });
     assert.equal(s.firstChallenge, 4);
     assert.equal(s.firstBlock, 6);
     assert.equal(s.compromised, 1);
-    assert.equal(s.confirmedBy403, 1);
+    assert.equal(s.validChallenged, 1);
+    assert.equal("confirmedBy403" in s, false);
     assert.equal(s.validBlocked, 1);
     assert.equal(s.validTried, 3);
     assert.equal(s.falsePositives, null);
