@@ -44,3 +44,8 @@ Thumbs.db
 
 # --- Claude Code (local) ---
 .claude/settings.local.json
+
+# --- Simulador ---
+# Resultados de cada corrida (solo se versiona el ejemplo de referencia).
+simulator/results/*
+!simulator/results/ejemplo/
