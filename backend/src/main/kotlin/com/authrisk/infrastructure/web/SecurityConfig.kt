@@ -21,6 +21,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 @Configuration
 class SecurityConfig(
     @Value("\${app.cors.allowed-origins}") private val allowedOrigins: List<String>,
+    @Value("\${app.demo-mode:false}") private val demoMode: Boolean,
 ) {
 
     @Bean
@@ -57,13 +58,20 @@ class SecurityConfig(
         )
     }
 
-    /** CORS restringido a los orígenes configurados (por defecto solo el frontend local). */
+    /**
+     * CORS restringido a los orígenes configurados (por defecto solo el frontend local).
+     * `X-Simulated-IP` solo se admite en modo demo; fuera de él el preflight lo rechaza.
+     */
     @Bean
     fun corsConfigurationSource(): CorsConfigurationSource {
         val config = CorsConfiguration().apply {
             this.allowedOrigins = this@SecurityConfig.allowedOrigins
             allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "OPTIONS")
-            allowedHeaders = listOf("Authorization", "Content-Type")
+            allowedHeaders = buildList {
+                add("Authorization")
+                add("Content-Type")
+                if (demoMode) add(ClientIpResolver.SIMULATED_IP_HEADER)
+            }
             // Necesario para que el navegador envíe la cookie de refresh desde el frontend.
             allowCredentials = true
             maxAge = 3600
