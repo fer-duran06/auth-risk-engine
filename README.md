@@ -4,7 +4,8 @@ Proyecto académico (Seguridad Informática). API que evalúa el riesgo de cada 
 **ALLOW / CHALLENGE (2FA TOTP) / BLOCK** para mitigar ataques de *credential stuffing*. Incluye frontend web,
 dashboard de administración y un simulador de ataque. Uso exclusivamente académico y defensivo.
 
-> Estado: **Fase 0** — base del proyecto (estructura, infraestructura, backend y frontend mínimos).
+> Estado: **Fase 3**: autenticación (JWT + refresh rotativo), motor de riesgo y frontend de login, registro y `/me`.
+> Detalle por fase en [`docs/`](docs/README.md).
 
 ## Estructura
 
@@ -19,7 +20,7 @@ dashboard de administración y un simulador de ataque. Uso exclusivamente acadé
 
 - Docker Desktop (con Docker Compose v2)
 - JDK 17+ para ejecutar Gradle (la toolchain JDK 21 se descarga sola si falta)
-- Node.js 20.9+ y npm
+- Node.js 22.12+ y npm (Vitest 5 lo exige)
 
 ## Cómo levantar todo
 
@@ -40,6 +41,7 @@ cd backend
 # 4. Frontend (http://localhost:3000)
 cd frontend
 npm install
+npm test                   # pruebas unitarias (Vitest)
 npm run dev
 ```
 

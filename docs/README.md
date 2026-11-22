@@ -11,3 +11,5 @@ Contenido previsto para esta carpeta (se irá completando en fases posteriores):
 ## Fases
 
 - [Fase 1 — Autenticación básica](fase-1-auth.md)
+- [Fase 2 — Motor de riesgo](fase-2-riesgo.md)
+- [Fase 3 — Frontend](fase-3-frontend.md)
