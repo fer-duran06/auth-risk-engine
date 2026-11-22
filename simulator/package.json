@@ -1,0 +1,16 @@
+{
+  "name": "authshield-simulator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Simulador académico de credential stuffing contra el backend local de AuthShield",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "sin-proteccion": "node simulate.mjs run --mode sin-proteccion",
+    "protegido": "node simulate.mjs run --mode protegido",
+    "compare": "node simulate.mjs compare",
+    "test": "node --test"
+  }
+}
