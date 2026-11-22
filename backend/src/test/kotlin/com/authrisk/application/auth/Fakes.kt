@@ -18,6 +18,9 @@ import com.authrisk.domain.port.RefreshTokenGenerator
 import com.authrisk.domain.port.RefreshTokenRepository
 import com.authrisk.domain.port.TokenIssuer
 import com.authrisk.domain.port.UserRepository
+import com.authrisk.domain.port.TotpSecretCipher
+import com.authrisk.domain.port.UserTotpRepository
+import com.authrisk.domain.totp.UserTotp
 import com.authrisk.domain.token.AccessToken
 import com.authrisk.domain.token.RefreshToken
 import com.authrisk.domain.user.Email
@@ -27,6 +30,7 @@ import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
+import java.util.Base64
 import java.util.UUID
 
 // Dobles de prueba en memoria para los puertos: evitan mocks y mantienen las pruebas legibles.
@@ -168,5 +172,42 @@ class InMemoryLoginAttemptRepository : LoginAttemptRepository {
     val attempts = mutableListOf<LoginAttempt>()
     override fun save(attempt: LoginAttempt) {
         attempts += attempt
+    }
+}
+
+class InMemoryUserTotpRepository : UserTotpRepository {
+    val rows = mutableMapOf<UUID, UserTotp>()
+
+    override fun findByUserId(userId: UUID) = rows[userId]
+
+    override fun savePending(userId: UUID, encryptedSecret: String, now: Instant): Boolean {
+        if (rows[userId]?.enabled == true) return false
+        rows[userId] = UserTotp(userId, encryptedSecret, false, null, null, now)
+        return true
+    }
+
+    override fun markStepUsed(userId: UUID, step: Long): Boolean {
+        val row = rows[userId] ?: return false
+        if (row.lastUsedStep != null && row.lastUsedStep >= step) return false
+        rows[userId] = row.copy(lastUsedStep = step)
+        return true
+    }
+
+    override fun enable(userId: UUID, now: Instant): Boolean {
+        val row = rows[userId] ?: return false
+        if (row.enabled) return false
+        rows[userId] = row.copy(enabled = true, confirmedAt = now)
+        return true
+    }
+}
+
+/** "Cifrado" reversible ligado al usuario: suficiente para probar los casos de uso sin AES. */
+class FakeTotpSecretCipher : TotpSecretCipher {
+    override fun encrypt(userId: UUID, secret: ByteArray) = "$userId:${Base64.getEncoder().encodeToString(secret)}"
+
+    override fun decrypt(userId: UUID, encrypted: String): ByteArray {
+        val (owner, data) = encrypted.split(":")
+        check(owner == userId.toString()) { "secreto de otro usuario" }
+        return Base64.getDecoder().decode(data)
     }
 }

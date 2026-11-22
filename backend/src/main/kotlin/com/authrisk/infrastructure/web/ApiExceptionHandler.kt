@@ -3,6 +3,8 @@ package com.authrisk.infrastructure.web
 import com.authrisk.domain.risk.ChallengeRequiredException
 import com.authrisk.domain.risk.LoginBlockedException
 import com.authrisk.domain.token.InvalidRefreshTokenException
+import com.authrisk.domain.totp.InvalidTotpCodeException
+import com.authrisk.domain.totp.TotpAlreadyEnabledException
 import com.authrisk.infrastructure.web.auth.CodedErrorResponse
 import com.authrisk.domain.user.InvalidCredentialsException
 import com.authrisk.domain.user.InvalidEmailException
@@ -48,6 +50,13 @@ class ApiExceptionHandler(private val cookies: RefreshCookieFactory) {
             .body(ErrorResponse(INVALID_SESSION))
     }
 
+    @ExceptionHandler(InvalidTotpCodeException::class)
+    fun invalidTotp(): ResponseEntity<ErrorResponse> = badRequest(emptyList(), INVALID_CODE)
+
+    @ExceptionHandler(TotpAlreadyEnabledException::class)
+    fun totpAlreadyEnabled(): ResponseEntity<ErrorResponse> =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ErrorResponse(TOTP_ALREADY_ENABLED))
+
     @ExceptionHandler(InvalidEmailException::class, WeakPasswordException::class)
     fun domainValidation(ex: RuntimeException): ResponseEntity<ErrorResponse> =
         badRequest(listOfNotNull(ex.message))
@@ -70,8 +79,8 @@ class ApiExceptionHandler(private val cookies: RefreshCookieFactory) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ErrorResponse("Error interno"))
     }
 
-    private fun badRequest(details: List<String>) =
-        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorResponse("Solicitud inválida", details))
+    private fun badRequest(details: List<String>, message: String = "Solicitud inválida") =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorResponse(message, details))
 
     companion object {
         const val INVALID_CREDENTIALS = "Credenciales inválidas"
@@ -79,5 +88,7 @@ class ApiExceptionHandler(private val cookies: RefreshCookieFactory) {
         const val TOO_MANY_ATTEMPTS = "Demasiados intentos. Intenta más tarde."
         const val CHALLENGE_REQUIRED_MESSAGE = "Verificación adicional requerida"
         const val CHALLENGE_REQUIRED = "CHALLENGE_REQUIRED"
+        const val INVALID_CODE = "Código inválido"
+        const val TOTP_ALREADY_ENABLED = "La verificación en dos pasos ya está activa"
     }
 }

@@ -1,5 +1,7 @@
 package com.authrisk.infrastructure.web.auth
 
+import com.authrisk.application.twofactor.TotpSetup
+import com.authrisk.application.twofactor.TotpStatus
 import com.authrisk.domain.user.Email
 import com.authrisk.domain.user.PasswordPolicy
 import com.authrisk.domain.user.User
@@ -50,3 +52,25 @@ data class ErrorResponse(val error: String, val details: List<String> = emptyLis
 
 /** Error con código estable para que el cliente decida el siguiente paso (p. ej. pedir 2FA). */
 data class CodedErrorResponse(val error: String, val code: String)
+
+data class TotpCodeRequest(
+    @field:NotBlank @field:Size(max = 16)
+    val code: String,
+) {
+    override fun toString(): String = "TotpCodeRequest(***)"
+}
+
+/** El secreto solo se devuelve aquí, una vez, para registrarlo en la app autenticadora. */
+data class TotpSetupResponse(val secret: String, val otpauthUri: String) {
+    override fun toString(): String = "TotpSetupResponse(***)"
+
+    companion object {
+        fun from(setup: TotpSetup) = TotpSetupResponse(setup.secret, setup.otpauthUri)
+    }
+}
+
+data class TotpStatusResponse(val enabled: Boolean, val confirmedAt: Instant?) {
+    companion object {
+        fun from(status: TotpStatus) = TotpStatusResponse(status.enabled, status.confirmedAt)
+    }
+}

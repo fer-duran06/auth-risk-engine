@@ -13,7 +13,7 @@ import java.util.Base64
 
 /**
  * Base de las pruebas de integración: PostgreSQL y Redis reales (Testcontainers), compartidos
- * por todas las clases para reutilizar el contexto de Spring. El secreto JWT se genera al azar.
+ * por todas las clases para reutilizar el contexto de Spring. El secreto JWT y la clave TOTP se generan al azar.
  */
 abstract class IntegrationTestBase {
 
@@ -38,10 +38,15 @@ abstract class IntegrationTestBase {
         private val jwtSecret: String =
             Base64.getEncoder().encodeToString(ByteArray(48).also(SecureRandom()::nextBytes))
 
+        /** Clave AES-256 aleatoria para el secreto TOTP (base64 de 32 bytes). */
+        val totpEncryptionKey: String =
+            Base64.getEncoder().encodeToString(ByteArray(32).also(SecureRandom()::nextBytes))
+
         @DynamicPropertySource
         @JvmStatic
         fun authProperties(registry: DynamicPropertyRegistry) {
             registry.add("app.auth.jwt-secret") { jwtSecret }
+            registry.add("app.two-factor.encryption-key") { totpEncryptionKey }
             // Explícito para no depender del perfil activo: las pruebas varían la IP con X-Simulated-IP.
             registry.add("app.demo-mode") { "true" }
         }

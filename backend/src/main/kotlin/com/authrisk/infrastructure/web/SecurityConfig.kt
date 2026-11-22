@@ -40,7 +40,8 @@ class SecurityConfig(
                 it.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 it.requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login", "/api/auth/refresh", "/api/auth/logout")
                     .permitAll()
-                it.requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
+                it.requestMatchers(HttpMethod.GET, "/api/auth/me", "/api/auth/2fa/status").authenticated()
+                it.requestMatchers(HttpMethod.POST, "/api/auth/2fa/setup", "/api/auth/2fa/enable").authenticated()
                 it.requestMatchers("/error").permitAll()
                 it.anyRequest().denyAll()
             }

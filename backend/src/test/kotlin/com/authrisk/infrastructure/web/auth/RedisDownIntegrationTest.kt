@@ -82,6 +82,7 @@ class RedisDownIntegrationTest {
             registry.add("spring.data.redis.host") { "127.0.0.1" }
             registry.add("spring.data.redis.port") { closedPort }
             registry.add("app.auth.jwt-secret") { jwtSecret }
+            registry.add("app.two-factor.encryption-key") { IntegrationTestBase.totpEncryptionKey }
             registry.add("app.demo-mode") { "true" }
         }
     }

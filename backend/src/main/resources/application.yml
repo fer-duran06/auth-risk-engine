@@ -61,6 +61,14 @@ app:
     refresh-token-ttl: 7d
     # Secure en la cookie de refresh: activo salvo que el perfil o la variable lo desactiven.
     cookie-secure: ${AUTH_COOKIE_SECURE:true}
+  # 2FA con TOTP (RFC 6238: SHA-1, 6 dígitos, 30 s, ±1 paso).
+  two-factor:
+    # AES-256-GCM para el secreto TOTP: base64 de 32 bytes. Sin valor por defecto: la app no arranca si falta.
+    encryption-key: ${TOTP_ENCRYPTION_KEY:}
+    issuer: AuthShield
+    challenge-ttl: 5m       # vigencia del challengeId de la zona CHALLENGE
+    max-attempts: 5         # intentos de verificación por challengeId
+    cleanup-interval: 5m    # purga de desafíos vencidos o cerrados
   # Acepta el header X-Simulated-IP (simulador). Solo el perfil dev lo activa.
   demo-mode: false
   # Motor de riesgo. Cada regla suma su peso si su contador llega al umbral dentro de la ventana.
