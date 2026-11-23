@@ -233,3 +233,7 @@ Corrida de referencia del 2026-11-22 (semilla `20261122`, 5 req/s). El mismo ata
 - [Fase 6 — Panel de administración](docs/fase-6-admin.md)
 - [Fase 7 — Simulador de ataque](docs/fase-7-simulador.md)
 - [Simulador: uso](simulator/README.md)
+
+## Licencia
+
+Distribuido bajo la licencia MIT. Consulta el archivo [`LICENSE`](LICENSE).
