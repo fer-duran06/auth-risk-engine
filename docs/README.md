@@ -14,4 +14,5 @@ Contenido previsto para esta carpeta (se irá completando en fases posteriores):
 - [Fase 2 — Motor de riesgo](fase-2-riesgo.md)
 - [Fase 3 — Frontend](fase-3-frontend.md)
 - [Fase 4 — 2FA con TOTP](fase-4-2fa.md)
+- [Fase 6 — Panel de administración](fase-6-admin.md)
 - [Fase 7 — Simulador de ataque](fase-7-simulador.md)
