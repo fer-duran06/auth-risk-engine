@@ -32,7 +32,11 @@ interface LoginChallengeRepository {
     /** Lee el desafío bloqueando la fila hasta el final de la transacción. */
     fun findByHashForUpdate(idHash: String): LoginChallenge?
 
-    fun update(challenge: LoginChallenge)
+    /**
+     * Fija intentos y cierre del desafío con [idHash] en una sola sentencia. Se ejecuta en todo
+     * verify, también si el id no existe (0 filas): así el trabajo en BD no depende del motivo del fallo.
+     */
+    fun updateAttempts(idHash: String, attempts: Int, consumedAt: Instant?): Int
 
     /** Borra los desafíos vencidos o cerrados. Devuelve cuántos borró. */
     fun deleteClosed(now: Instant): Int

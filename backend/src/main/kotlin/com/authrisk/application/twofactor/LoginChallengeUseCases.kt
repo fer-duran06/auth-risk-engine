@@ -68,6 +68,12 @@ class LoginChallengeIssuer(
  * existe, no venció, no se usó, le quedan intentos, la contraseña del login era correcta, el
  * usuario tiene el 2FA activo y el código TOTP es válido y no reutilizado. Cualquier otro caso
  * produce la misma [InvalidCredentialsException]. Cada intento queda en login_attempts (stage TOTP).
+ *
+ * Camino constante: sea cual sea el motivo del fallo, se hace el mismo trabajo (lectura del
+ * desafío, lectura de la configuración TOTP, descifrado AES-GCM, 3 HMAC, un UPDATE de user_totp y
+ * un UPDATE de login_challenges). Cuando no aplica el dato real se usa un usuario y un secreto
+ * ficticios. Así el tiempo de respuesta no revela si la contraseña era correcta ni si hay 2FA.
+ * Solo el éxito hace trabajo extra (emitir tokens), y el éxito ya es visible en la respuesta.
  */
 class VerifyLoginChallengeUseCase(
     private val challenges: LoginChallengeRepository,
@@ -83,6 +89,12 @@ class VerifyLoginChallengeUseCase(
     private val clock: Clock,
     private val maxAttempts: Int,
 ) {
+    private val log = System.getLogger(VerifyLoginChallengeUseCase::class.java.name)
+
+    // Secreto ficticio cifrado con la misma clave: el descifrado cuesta lo mismo que el real.
+    private val dummySecret: ByteArray = Totp.newSecret()
+    private val dummyEncryptedSecret: String = cipher.encrypt(DUMMY_USER_ID, dummySecret)
+
     private sealed interface Decision {
         /** challengeId desconocido: no hay desafío que actualizar. */
         data object Unknown : Decision
@@ -102,27 +114,58 @@ class VerifyLoginChallengeUseCase(
     }
 
     private fun decide(idHash: String, code: String, now: Instant): Decision {
-        val challenge = challenges.findByHashForUpdate(idHash) ?: return Decision.Unknown
-        if (!challenge.isOpen(now, maxAttempts)) return Decision.Rejected(challenge, invalid = true)
+        val challenge = challenges.findByHashForUpdate(idHash)
+        val open = challenge != null && challenge.isOpen(now, maxAttempts)
+        // Usuario cuyo código se verifica de verdad; null = camino ficticio.
+        val candidate = challenge?.userId?.takeIf { open && challenge.passwordOk }
 
-        val attempts = challenge.attempts + 1
-        val userId = challenge.userId
-        val ok = challenge.passwordOk && userId != null && codeAccepted(userId, code, now)
-        // Éxito o último intento: el desafío queda cerrado y no admite más verificaciones.
-        val closed = ok || attempts >= maxAttempts
-        challenges.update(challenge.copy(attempts = attempts, consumedAt = if (closed) now else null))
+        val ok = codeAccepted(candidate, code, now)
+
+        // Siempre un UPDATE: con un id desconocido afecta 0 filas; con un desafío cerrado deja sus valores.
+        val attempts = when {
+            challenge == null -> 0
+            open -> challenge.attempts + 1
+            else -> challenge.attempts
+        }
+        val consumedAt = when {
+            challenge == null -> null
+            !open -> challenge.consumedAt
+            // Éxito o último intento: el desafío queda cerrado y no admite más verificaciones.
+            ok || attempts >= maxAttempts -> now
+            else -> null
+        }
+        challenges.updateAttempts(idHash, attempts, consumedAt)
+
+        if (challenge == null) return Decision.Unknown
+        if (!open) return Decision.Rejected(challenge, invalid = true)
         if (!ok) return Decision.Rejected(challenge, invalid = false)
 
-        val user = users.findById(userId!!) ?: return Decision.Rejected(challenge, invalid = false)
+        val user = users.findById(candidate!!) ?: return Decision.Rejected(challenge, invalid = false)
         val issued = sessionTokens.issue(user, familyId = UUID.randomUUID(), now = now)
         refreshTokens.save(issued.record)
         return Decision.Accepted(challenge, issued.tokens)
     }
 
-    private fun codeAccepted(userId: UUID, code: String, now: Instant): Boolean {
-        val config = totpRepo.findByUserId(userId)?.takeIf { it.enabled } ?: return false
-        val step = totp.verify(cipher.decrypt(userId, config.encryptedSecret), code, now) ?: return false
-        return totpRepo.markStepUsed(userId, step)
+    /**
+     * Misma secuencia para todo [candidate], real o null: leer la configuración, descifrar,
+     * verificar y un UPDATE de last_used_step. Si el descifrado falla (clave cambiada o dato
+     * corrupto), el código no se acepta: mismo 401, nunca un 500.
+     */
+    private fun codeAccepted(candidate: UUID?, code: String, now: Instant): Boolean {
+        val config = totpRepo.findByUserId(candidate ?: DUMMY_USER_ID)
+        val real = candidate != null && config != null && config.enabled
+        val owner = if (real) candidate!! else DUMMY_USER_ID
+        val secret = try {
+            cipher.decrypt(owner, if (real) config!!.encryptedSecret else dummyEncryptedSecret)
+        } catch (ex: Exception) {
+            // Solo el tipo: nunca el secreto, el usuario ni el mensaje.
+            log.log(System.Logger.Level.WARNING, "No se pudo descifrar el secreto TOTP: ${ex.javaClass.name}")
+            null
+        }
+        val step = totp.verify(secret ?: dummySecret, code, now)
+        if (real && secret != null && step != null) return totpRepo.markStepUsed(owner, step)
+        totpRepo.markStepUsed(DUMMY_USER_ID, DUMMY_STEP) // afecta 0 filas: el usuario ficticio no existe
+        return false
     }
 
     private fun record(decision: Decision, ip: String, now: Instant) {
@@ -140,6 +183,10 @@ class VerifyLoginChallengeUseCase(
     private fun attempt(email: String, ip: String, risk: RiskAssessment, outcome: LoginOutcome, now: Instant) =
         LoginAttempt(UUID.randomUUID(), email, ip, risk, outcome, now, LoginStage.TOTP)
 }
+
+/** Usuario ficticio del camino constante: el UUID nulo, que nunca se asigna a un usuario real. */
+val DUMMY_USER_ID: UUID = UUID(0L, 0L)
+private const val DUMMY_STEP = 0L
 
 /** Borra los desafíos vencidos o cerrados para que la tabla no crezca sin límite. */
 class PurgeLoginChallengesUseCase(

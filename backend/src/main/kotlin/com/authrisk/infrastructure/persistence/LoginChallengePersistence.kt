@@ -72,6 +72,24 @@ interface LoginChallengeJpaRepository : JpaRepository<LoginChallengeJpaEntity, U
     fun findByIdHash(idHash: String): LoginChallengeJpaEntity?
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
+    // Sin parámetros nulos: un Instant nulo en SQL nativo puede llegar sin tipo a PostgreSQL.
+    @Query(
+        nativeQuery = true,
+        value = """
+            UPDATE login_challenges
+               SET attempts = :attempts,
+                   consumed_at = CASE WHEN :closed THEN CAST(:closedAt AS timestamptz) ELSE NULL END
+             WHERE id_hash = :idHash
+        """,
+    )
+    fun updateAttempts(
+        @Param("idHash") idHash: String,
+        @Param("attempts") attempts: Short,
+        @Param("closed") closed: Boolean,
+        @Param("closedAt") closedAt: Instant,
+    ): Int
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("delete from LoginChallengeJpaEntity c where c.expiresAt <= :now or c.consumedAt is not null")
     fun deleteClosed(@Param("now") now: Instant): Int
 }
@@ -87,12 +105,8 @@ class JpaLoginChallengeRepositoryAdapter(
 
     override fun findByHashForUpdate(idHash: String): LoginChallenge? = jpa.findByIdHash(idHash)?.toDomain()
 
-    override fun update(challenge: LoginChallenge) {
-        val entity = entityManager.find(LoginChallengeJpaEntity::class.java, challenge.id)
-            ?: error("Desafío inexistente: ${challenge.id}")
-        entity.attempts = challenge.attempts.toShort()
-        entity.consumedAt = challenge.consumedAt
-    }
+    override fun updateAttempts(idHash: String, attempts: Int, consumedAt: Instant?): Int =
+        jpa.updateAttempts(idHash, attempts.toShort(), consumedAt != null, consumedAt ?: Instant.EPOCH)
 
     override fun deleteClosed(now: Instant): Int = jpa.deleteClosed(now)
 }

@@ -223,6 +223,48 @@ class TwoFactorChallengeIntegrationTest : IntegrationTestBase() {
     }
 
     @Test
+    fun `todos los motivos de fallo del verify dan una respuesta idéntica`() {
+        val (email, secret) = userWith2fa()
+        val noTotp = newEmail().also { post("/api/auth/register", mapOf("email" to it, "password" to password)) }
+        val ip = challengeIp()
+        val good = code(secret, 1)
+        val wrong = if (good == "000000") "111111" else "000000"
+        val expired = challengeId(email, ip).also {
+            jdbc.update("UPDATE login_challenges SET expires_at = now() - interval '1 second' WHERE id_hash = ?", sha256(it))
+        }
+
+        val responses = listOf(
+            verify(challengeId(email, ip, "incorrecta-1234"), good, ip),
+            verify(challengeId(newEmail(), ip), good, ip),
+            verify(challengeId(noTotp, ip), good, ip),
+            verify(challengeId(email, ip), wrong, ip),
+            verify("no-existe", good, ip),
+            verify(expired, good, ip),
+        ).map { it.andReturn().response }
+
+        responses.forEach {
+            assertEquals(401, it.status)
+            assertNull(it.getHeader(HttpHeaders.SET_COOKIE))
+        }
+        assertEquals(1, responses.map { it.contentAsString }.toSet().size)
+        assertEquals(1, responses.map { it.contentType }.toSet().size)
+        assertEquals(1, responses.map { it.headerNames.sorted() }.toSet().size)
+    }
+
+    @Test
+    fun `un secreto que no se puede descifrar da el mismo 401 y no un 500`() {
+        val (email, secret) = userWith2fa()
+        jdbc.update(
+            "UPDATE user_totp SET secret_encrypted = ? WHERE user_id = (SELECT id FROM users WHERE email = ?)",
+            java.util.Base64.getEncoder().encodeToString(ByteArray(48)), email,
+        )
+        val ip = challengeIp()
+
+        val body = rejected(challengeId(email, ip), code(secret, 1), ip)
+        assertEquals(rejected("no-existe", code(secret, 1), ip), body)
+    }
+
+    @Test
     fun `la purga programada borra desafíos vencidos y cerrados`() {
         val (email, secret) = userWith2fa()
         val ip = challengeIp()

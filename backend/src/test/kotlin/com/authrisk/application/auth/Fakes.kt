@@ -125,7 +125,7 @@ class AuthFixture(riskEnabled: Boolean = true) {
     val generator = SequentialRefreshTokenGenerator()
     val tx = DirectTransactionRunner()
     val refreshTtl: Duration = Duration.ofDays(7)
-    private val sessions = SessionTokenFactory(FakeTokenIssuer(clock), generator, refreshTtl)
+    val sessions = SessionTokenFactory(FakeTokenIssuer(clock), generator, refreshTtl)
 
     val riskCounters = FakeRiskCounters()
     val loginAttempts = InMemoryLoginAttemptRepository()
@@ -244,9 +244,10 @@ class InMemoryLoginChallengeRepository : LoginChallengeRepository {
 
     override fun findByHashForUpdate(idHash: String) = rows.values.firstOrNull { it.idHash == idHash }
 
-    override fun update(challenge: LoginChallenge) {
-        check(rows.containsKey(challenge.id))
-        rows[challenge.id] = challenge
+    override fun updateAttempts(idHash: String, attempts: Int, consumedAt: Instant?): Int {
+        val row = rows.values.firstOrNull { it.idHash == idHash } ?: return 0
+        rows[row.id] = row.copy(attempts = attempts, consumedAt = consumedAt)
+        return 1
     }
 
     override fun deleteClosed(now: Instant): Int {
