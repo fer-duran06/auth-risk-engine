@@ -1,5 +1,6 @@
 package com.authrisk.infrastructure.web
 
+import com.authrisk.application.admin.InvalidAdminQueryException
 import com.authrisk.domain.risk.ChallengeRequiredException
 import com.authrisk.domain.risk.LoginBlockedException
 import com.authrisk.domain.token.InvalidRefreshTokenException
@@ -20,6 +21,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 
 /**
  * Traduce errores a respuestas JSON genéricas. Nunca se incluyen valores enviados por el cliente
@@ -66,6 +68,10 @@ class ApiExceptionHandler(private val cookies: RefreshCookieFactory) {
     @ExceptionHandler(MethodArgumentNotValidException::class)
     fun beanValidation(ex: MethodArgumentNotValidException): ResponseEntity<ErrorResponse> =
         badRequest(ex.bindingResult.fieldErrors.map { "${it.field}: ${it.defaultMessage}" }.sorted())
+
+    // Parámetros de consulta fuera de rango o con tipo inválido (p. ej. page=abc): 400 sin repetir el valor.
+    @ExceptionHandler(InvalidAdminQueryException::class, MethodArgumentTypeMismatchException::class)
+    fun invalidQuery(): ResponseEntity<ErrorResponse> = badRequest(emptyList())
 
     @ExceptionHandler(HttpMessageNotReadableException::class)
     fun unreadable(): ResponseEntity<ErrorResponse> = badRequest(emptyList())

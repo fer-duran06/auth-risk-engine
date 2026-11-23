@@ -16,7 +16,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 
 /**
  * Seguridad HTTP: API sin estado autenticada con JWT Bearer (resource server).
- * Solo los endpoints de autenticación, health y Swagger son públicos; lo no declarado se deniega.
+ * Solo los endpoints de autenticación, health y Swagger son públicos; todo /api/admin exige ROLE_ADMIN
+ * y lo no declarado se deniega.
  */
 @Configuration
 class SecurityConfig(
@@ -43,6 +44,8 @@ class SecurityConfig(
                     .permitAll()
                 it.requestMatchers(HttpMethod.GET, "/api/auth/me", "/api/auth/2fa/status").authenticated()
                 it.requestMatchers(HttpMethod.POST, "/api/auth/2fa/setup", "/api/auth/2fa/enable").authenticated()
+                // Panel de administración: solo lectura y solo ROLE_ADMIN (claim role del JWT).
+                it.requestMatchers(HttpMethod.GET, "/api/admin/**").hasRole("ADMIN")
                 it.requestMatchers("/error").permitAll()
                 it.anyRequest().denyAll()
             }
