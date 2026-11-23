@@ -214,6 +214,11 @@ Corrida de referencia del 2026-11-22 (semilla `20261122`, 5 req/s). El mismo ata
 - **Fuerza bruta contra una cuenta:** desde una IP el máximo es 65 (30 + 20 + 15), así que se queda en CHALLENGE y nunca llega a BLOCK.
 - **Ventana inicial en ALLOW:** los primeros intentos de una IP nueva siempre son ALLOW. Un ataque *low and slow* se mantiene por debajo de los umbrales.
 - **Sin códigos de respaldo** ni forma de desactivar o reconfigurar el 2FA. El panel de administración es de solo lectura.
+- **Pendientes de la revisión de seguridad** (detalle en [fase-4](docs/fase-4-2fa.md#revisión-de-seguridad)):
+  - **Fallos de TOTP sin contador por cuenta:** el límite de 5 intentos es por desafío. Con la contraseña y rotando IPs, un atacante puede probar códigos sin techo.
+  - **`/2fa/verify` sin límite de frecuencia**, y cada `challengeId` inventado escribe una fila en `login_attempts`, una tabla que nunca se purga.
+  - **Sin prueba de concurrencia** del anti-replay ni del límite de intentos: la garantía está razonada, no verificada.
+  - **Diferencias de tiempo residuales:** en zona CHALLENGE, la contraseña incorrecta actualiza dos contadores más en Redis (microsegundos), y el camino constante del verify iguala el trabajo pero no garantiza tiempos idénticos.
 - **Modo demo** (perfil `dev`): acepta `X-Simulated-IP`, lo que permite elegir la IP. No debe usarse fuera de local.
 
 ## Documentación
