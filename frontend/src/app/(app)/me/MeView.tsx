@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Alert, Badge, Button, Card, Icon, type IconName } from "@/components/ui";
@@ -83,6 +84,17 @@ function AccountCard({ user }: { user: CurrentUser }) {
         <Field icon="clock" label="Miembro desde" value={<time dateTime={user.createdAt}>{createdLabel}</time>} />
         <Field icon="fingerprint" label="Identificador" value={user.id} mono />
       </dl>
+
+      {/* Solo un atajo: el backend exige ROLE_ADMIN en cada endpoint del panel. */}
+      {user.role === "ADMIN" && (
+        <Link
+          href="/admin"
+          className="mt-6 inline-flex items-center gap-2 rounded-lg border border-acento/40 bg-acento/10 px-4 py-2.5 text-sm font-semibold text-acento hover:bg-acento/20"
+        >
+          <Icon name="chart" size={16} />
+          Ir al panel de administración
+        </Link>
+      )}
     </Card>
   );
 }
