@@ -1,13 +1,13 @@
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
-// Pruebas unitarias de la lógica (cliente API y sesión) en entorno Node, sin DOM.
+// Pruebas unitarias en Node; las de componentes (*.test.tsx) declaran happy-dom en el propio archivo.
 export default defineConfig({
   resolve: {
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.{ts,tsx}"],
   },
 });

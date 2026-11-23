@@ -14,10 +14,13 @@ export interface PendingChallenge {
 
 export function createChallengeStore(now: () => number = Date.now) {
   let current: PendingChallenge | null = null;
+  const listeners = new Set<() => void>();
+  const notify = () => listeners.forEach((l) => l());
 
   return {
     set(id: string): void {
       current = { id, expiresAt: now() + CHALLENGE_TTL_MS };
+      notify();
     },
 
     /** Desafío vigente, o null si no hay o ya venció (en ese caso se descarta). */
@@ -28,6 +31,13 @@ export function createChallengeStore(now: () => number = Date.now) {
 
     clear(): void {
       current = null;
+      notify();
+    },
+
+    /** Para useSyncExternalStore: la vista de verificación reacciona a un desafío nuevo. */
+    subscribe(listener: () => void): () => void {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
     },
   };
 }

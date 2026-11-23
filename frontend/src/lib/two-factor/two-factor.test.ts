@@ -119,6 +119,18 @@ describe("almacén del desafío", () => {
     expect(store.get()).toBeNull();
   });
 
+  it("notifica a los suscriptores al fijar o borrar el desafío", () => {
+    const store = createChallengeStore();
+    const listener = vi.fn();
+    const unsubscribe = store.subscribe(listener);
+    store.set("a");
+    store.clear();
+    expect(listener).toHaveBeenCalledTimes(2);
+    unsubscribe();
+    store.set("b");
+    expect(listener).toHaveBeenCalledTimes(2);
+  });
+
   it("cada instancia es independiente", () => {
     const a = createChallengeStore();
     const b = createChallengeStore();

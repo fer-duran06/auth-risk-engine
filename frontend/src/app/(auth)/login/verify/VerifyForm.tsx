@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import { CodeInput } from "@/components/auth/CodeInput";
 import { Alert, Badge, Button, Card, Icon } from "@/components/ui";
 import { authApi } from "@/lib/api";
@@ -22,8 +22,8 @@ const MESSAGES = {
   error: "No se pudo completar la solicitud. Revisa tu conexión e inténtalo de nuevo.",
 } as const;
 
-function remainingSeconds(challenge: PendingChallenge | null): number {
-  return challenge ? Math.max(0, Math.ceil((challenge.expiresAt - Date.now()) / 1000)) : 0;
+function remainingSeconds(challenge: PendingChallenge): number {
+  return Math.max(0, Math.ceil((challenge.expiresAt - Date.now()) / 1000));
 }
 
 function formatClock(seconds: number): string {
@@ -32,10 +32,25 @@ function formatClock(seconds: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+/**
+ * Con cacheComponents, Next conserva esta página oculta (Activity) al navegar y su estado
+ * sobrevive. Por eso el desafío se lee del store en cada render y el formulario se monta con
+ * key={id}: un desafío nuevo empieza siempre con estado limpio (sin fallos ni tiempo agotado).
+ */
 export function VerifyForm() {
   const router = useRouter();
   // Solo existe tras un login en esta pestaña (navegación en el cliente). Al recargar no hay desafío.
-  const [challenge] = useState(() => challengeStore.get());
+  const challenge = useSyncExternalStore(challengeStore.subscribe, challengeStore.get, () => null);
+
+  useEffect(() => {
+    if (!challenge) router.replace("/login");
+  }, [challenge, router]);
+
+  return challenge ? <ChallengeForm key={challenge.id} challenge={challenge} /> : null;
+}
+
+function ChallengeForm({ challenge }: { challenge: PendingChallenge }) {
+  const router = useRouter();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -49,18 +64,10 @@ export function VerifyForm() {
   const finished = expired || exhausted;
 
   useEffect(() => {
-    if (!challenge) {
-      router.replace("/login");
-      return;
-    }
     titleRef.current?.focus();
     const timer = setInterval(() => setSeconds(remainingSeconds(challenge)), 1000);
     return () => clearInterval(timer);
-  }, [challenge, router]);
-
-  useEffect(() => {
-    if (finished) challengeStore.clear();
-  }, [finished]);
+  }, [challenge]);
 
   function backToLogin() {
     challengeStore.clear();
@@ -69,7 +76,7 @@ export function VerifyForm() {
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!challenge || finished) return;
+    if (finished) return;
     if (!isCompleteCode(code)) {
       setError(MESSAGES.incomplete);
       inputRef.current?.focus();
@@ -96,8 +103,6 @@ export function VerifyForm() {
     }
     inputRef.current?.focus();
   }
-
-  if (!challenge) return null;
 
   return (
     <Card className="overflow-hidden">
