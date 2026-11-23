@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { Activity, act } from "react";
+import { Activity, act, useSyncExternalStore } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -8,7 +8,23 @@ const router = { replace: vi.fn(), push: vi.fn() };
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
 const verifyChallenge = vi.fn(async () => ({ kind: "invalid" as const }));
 vi.mock("@/lib/api", () => ({ authApi: { verifyChallenge } }));
-vi.mock("@/lib/session", () => ({ session: { start: vi.fn() } }));
+// Sesión falsa con estado observable: start() la abre, como la real.
+const fakeSession = vi.hoisted(() => {
+  const listeners = new Set<() => void>();
+  const state = { status: "anonymous" as "anonymous" | "authenticated" };
+  return {
+    state,
+    subscribe: (l: () => void) => (listeners.add(l), () => listeners.delete(l)),
+    start: () => {
+      state.status = "authenticated";
+      listeners.forEach((l) => l());
+    },
+  };
+});
+vi.mock("@/lib/session", () => ({
+  session: { start: vi.fn(fakeSession.start) },
+  useSessionStatus: () => useSyncExternalStore(fakeSession.subscribe, () => fakeSession.state.status),
+}));
 
 const { challengeStore } = await import("@/lib/two-factor/challenge-store");
 const { VerifyForm } = await import("./VerifyForm");
@@ -52,6 +68,7 @@ describe("VerifyForm con la página preservada por Activity", () => {
     document.body.appendChild(container);
     root = createRoot(container);
     challengeStore.clear();
+    fakeSession.state.status = "anonymous";
     vi.clearAllMocks();
   });
 
@@ -81,6 +98,18 @@ describe("VerifyForm con la página preservada por Activity", () => {
     // Y el código se verifica contra el desafío nuevo.
     await submitCode("123456");
     expect(verifyChallenge).toHaveBeenLastCalledWith("ch-2", "123456");
+  });
+
+  it("tras verificar con éxito navega una sola vez, a /me, sin pasar por /login", async () => {
+    verifyChallenge.mockResolvedValueOnce({ kind: "ok", token: { accessToken: "tok", expiresIn: 900 } } as never);
+    challengeStore.set("ch-ok");
+    await render("visible");
+
+    await submitCode("123456");
+
+    expect(verifyChallenge).toHaveBeenCalledWith("ch-ok", "123456");
+    expect(router.replace.mock.calls).toEqual([["/me"]]);
+    expect(challengeStore.get()).toBeNull();
   });
 
   it("sin desafío en memoria redirige al login", async () => {

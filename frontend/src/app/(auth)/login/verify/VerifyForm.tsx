@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } fro
 import { CodeInput } from "@/components/auth/CodeInput";
 import { Alert, Badge, Button, Card, Icon } from "@/components/ui";
 import { authApi } from "@/lib/api";
-import { session } from "@/lib/session";
+import { session, useSessionStatus } from "@/lib/session";
 import { challengeStore, type PendingChallenge } from "@/lib/two-factor/challenge-store";
 import { isCompleteCode } from "@/lib/two-factor/code";
 
@@ -41,10 +41,12 @@ export function VerifyForm() {
   const router = useRouter();
   // Solo existe tras un login en esta pestaña (navegación en el cliente). Al recargar no hay desafío.
   const challenge = useSyncExternalStore(challengeStore.subscribe, challengeStore.get, () => null);
+  const status = useSessionStatus();
 
+  // Única navegación de salida: sin desafío, a /me si la verificación abrió la sesión y a /login si no.
   useEffect(() => {
-    if (!challenge) router.replace("/login");
-  }, [challenge, router]);
+    if (!challenge) router.replace(status === "authenticated" ? "/me" : "/login");
+  }, [challenge, status, router]);
 
   return challenge ? <ChallengeForm key={challenge.id} challenge={challenge} /> : null;
 }
@@ -89,9 +91,9 @@ function ChallengeForm({ challenge }: { challenge: PendingChallenge }) {
     setSubmitting(false);
 
     if (result.kind === "ok") {
+      // VerifyForm ve el store vacío y la sesión abierta, y navega a /me (una sola vez).
       challengeStore.clear();
       session.start(result.token);
-      router.replace("/me");
       return;
     }
     setCode("");
