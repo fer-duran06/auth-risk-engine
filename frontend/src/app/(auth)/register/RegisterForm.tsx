@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { DemoIpSelector } from "@/components/auth/DemoIpSelector";
 import { Alert, Button, Card, cx, Icon, PasswordField, TextField } from "@/components/ui";
 import { authApi } from "@/lib/api";
@@ -25,6 +25,21 @@ export function RegisterForm() {
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+
+  // Con cacheComponents, Next conserva esta página oculta (<Activity>). Al ocultarse se vuelve al
+  // formulario vacío: el siguiente visitante no ve datos ni la confirmación del anterior.
+  useLayoutEffect(
+    () => () => {
+      setEmail("");
+      setPassword("");
+      setConfirm("");
+      setFieldErrors({});
+      setFormError(null);
+      setSubmitting(false);
+      setDone(false);
+    },
+    [],
+  );
 
   function validate(): FieldErrors {
     const errors: FieldErrors = {};
@@ -56,7 +71,8 @@ export function RegisterForm() {
 
     switch (result.kind) {
       case "accepted":
-        // No se conserva la contraseña en memoria más de lo necesario.
+        // No se conservan los datos en memoria más de lo necesario.
+        setEmail("");
         setPassword("");
         setConfirm("");
         setDone(true);

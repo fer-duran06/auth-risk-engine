@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode, type Ref } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode, type Ref } from "react";
 import { CodeInput } from "@/components/auth/CodeInput";
 import { QrCode } from "@/components/auth/QrCode";
 import { Alert, Badge, Button, Card, Icon } from "@/components/ui";
@@ -27,6 +27,16 @@ export function SecurityView() {
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [justEnabled, setJustEnabled] = useState(false);
+
+  // Con cacheComponents, Next conserva esta página oculta (<Activity>) al navegar. Si el usuario
+  // sale a mitad de la activación, el secreto en claro no debe quedar en memoria ni en el DOM oculto.
+  useLayoutEffect(
+    () => () => {
+      setSetup(null);
+      setStartError(null);
+    },
+    [],
+  );
 
   const load = useCallback(async () => {
     setState({ kind: "loading" });

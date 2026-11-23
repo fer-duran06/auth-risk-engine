@@ -14,8 +14,10 @@ export type Unauthorized = { kind: "unauthorized" };
 /**
  * Sesión del cliente. El access token vive solo en esta closure (memoria):
  * nunca en localStorage, sessionStorage ni cookies legibles por JS.
+ * [onReset] se llama al iniciar y al cerrar sesión, para descartar estado efímero de otra
+ * sesión (p. ej. un desafío 2FA pendiente).
  */
-export function createSession(api: SessionApi) {
+export function createSession(api: SessionApi, onReset: () => void = () => {}) {
   let token: string | null = null;
   let status: SessionStatus = "unknown";
   let refreshing: Promise<boolean> | null = null;
@@ -60,6 +62,7 @@ export function createSession(api: SessionApi) {
 
     /** Guarda el access token recibido en el login. */
     start(accessToken: AccessToken): void {
+      onReset();
       setState(accessToken.accessToken, "authenticated");
     },
 
@@ -90,6 +93,7 @@ export function createSession(api: SessionApi) {
       try {
         await api.logout();
       } finally {
+        onReset();
         setState(null, "anonymous");
       }
     },

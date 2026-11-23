@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AccessToken } from "../api/auth";
+import { createChallengeStore } from "../two-factor/challenge-store";
 import { createSession, type SessionApi } from "./session";
 
 const token = (t: string): AccessToken => ({ accessToken: t, expiresIn: 900 });
@@ -125,5 +126,30 @@ describe("sesión en memoria", () => {
     s.start(token("a"));
     await expect(s.logout()).rejects.toThrow();
     expect(s.getToken()).toBeNull();
+  });
+
+  it("iniciar y cerrar sesión descartan un desafío 2FA pendiente", async () => {
+    const store = createChallengeStore();
+    const s = createSession(fakeApi([]), () => store.clear());
+
+    store.set("desafio-de-ana");
+    s.start(token("a"));
+    expect(store.get()).toBeNull();
+
+    store.set("desafio-pendiente");
+    await s.logout();
+    expect(store.get()).toBeNull();
+  });
+
+  it("el logout limpia aunque el backend falle", async () => {
+    const api = fakeApi([]);
+    api.logout = vi.fn(async () => {
+      throw new Error("red");
+    });
+    const onReset = vi.fn();
+    const s = createSession(api, onReset);
+    s.start(token("a"));
+    await expect(s.logout()).rejects.toThrow();
+    expect(onReset).toHaveBeenCalledTimes(2);
   });
 });
