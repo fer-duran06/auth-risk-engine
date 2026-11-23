@@ -93,6 +93,10 @@ function Dashboard({ stats }: { stats: AdminStats }) {
           <p className="mt-4 text-xs text-texto-suave">
             Las sesiones incluyen los logins en zona permitida y los desafíos completados con un código TOTP.
           </p>
+          <p className="mt-1 text-xs text-texto-suave">
+            «Sesiones emitidas» incluye las obtenidas por 2FA y «Logins sin tokens» cuenta solo intentos por contraseña,
+            así que ambas cifras no tienen por qué sumar el total de intentos.
+          </p>
         </Card>
       </div>
 
