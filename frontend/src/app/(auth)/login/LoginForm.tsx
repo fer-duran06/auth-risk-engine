@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useLayoutEffect, useState, type FormEvent } from "react";
 import { DemoIpSelector } from "@/components/auth/DemoIpSelector";
 import { Alert, Button, Card, Icon, PasswordField, TextField } from "@/components/ui";
 import { authApi } from "@/lib/api";
@@ -28,6 +28,19 @@ export function LoginForm() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<FormError | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Con cacheComponents, Next conserva esta página oculta (<Activity>) al navegar. Al ocultarse se
+  // borra todo: si no, tras cerrar sesión el siguiente usuario vería el email y la contraseña del anterior.
+  useLayoutEffect(
+    () => () => {
+      setEmail("");
+      setPassword("");
+      setFieldErrors({});
+      setFormError(null);
+      setSubmitting(false);
+    },
+    [],
+  );
 
   // Si ya hay sesión en memoria (p. ej. al volver atrás), ir directo al área de usuario.
   useEffect(() => {
@@ -57,6 +70,8 @@ export function LoginForm() {
 
     switch (result.kind) {
       case "ok":
+        setEmail("");
+        setPassword("");
         session.start(result.token);
         router.replace("/me");
         return;
