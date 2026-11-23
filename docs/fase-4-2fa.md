@@ -130,4 +130,5 @@ cd simulator && npm test
   - `TwoFactorChallengeIntegrationTest`: flujo completo; respuesta idéntica con contraseña correcta, incorrecta o email inexistente; código incorrecto o reutilizado; challengeId reutilizado o vencido; 5 intentos; usuario sin 2FA; purga.
   - `RedisDownIntegrationTest`: con Redis caído, el desafío se completa.
 - **Frontend (Vitest):** mapeo de los endpoints 2FA y del 403 con `challengeId`, el almacén del desafío (en memoria, con vencimiento, sin tocar el almacenamiento del navegador), la normalización del código y la matriz del QR.
+- **Regresión `VerifyForm.test.tsx`** (happy-dom, devDependency solo de pruebas): con `cacheComponents`, Next conserva la página oculta con `<Activity>`. La prueba comprueba que un desafío nuevo muestra el formulario aunque el anterior haya terminado. Por eso la vista lee el desafío del store en cada render y monta el formulario con `key={challengeId}`.
 - **Simulador:** el efecto en las corridas está en [`fase-7-simulador.md`](fase-7-simulador.md).

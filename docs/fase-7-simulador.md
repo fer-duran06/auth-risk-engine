@@ -1,7 +1,7 @@
 # Fase 7 — Simulador de ataque
 
 Mide, contra el backend local, cuánto frena el motor de riesgo un ataque de credential stuffing y sus variantes. Se compara la misma batería de ataques con el motor activo y desactivado.
-Los resultados reflejan las 4 reglas de la Fase 2: velocidad por IP (+30), usuarios distintos por IP (+25), fallos por cuenta (+20) y tasa global de fallos (+15). La corrida de referencia es posterior a la Fase 4 (2FA): en CHALLENGE el 403 ya no revela si la contraseña es correcta. HIBP y administración (fases 5 y 6) aún no existen.
+Los resultados reflejan las 4 reglas de la Fase 2: velocidad por IP (+30), usuarios distintos por IP (+25), fallos por cuenta (+20) y tasa global de fallos (+15). La corrida de referencia es posterior a la Fase 4 (2FA): en CHALLENGE el 403 ya no revela si la contraseña es correcta. HIBP (fase 5) no está implementado, así que la regla de contraseña filtrada no participa.
 
 Uso: [`simulator/README.md`](../simulator/README.md).
 

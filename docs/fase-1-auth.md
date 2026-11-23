@@ -20,6 +20,8 @@ Todavía sin motor de riesgo, 2FA ni HIBP (fases posteriores).
 | POST | `/api/auth/logout` | cookie | `204`, revoca la familia y borra la cookie. Idempotente. |
 | GET | `/api/auth/me` | Bearer | `200 {id, email, role, createdAt}`. `401` sin token válido. |
 
+> Desde la Fase 2 el login también puede responder `429` (zona BLOCK), y desde la Fase 4 `403 CHALLENGE_REQUIRED` con `challengeId` (zona CHALLENGE, se completa con `POST /api/auth/2fa/verify`). Ver [fase-2-riesgo.md](fase-2-riesgo.md) y [fase-4-2fa.md](fase-4-2fa.md).
+
 Swagger (solo perfil `dev`): `/swagger-ui.html`, con esquema `bearerAuth` para probar `/me`.
 
 ## Flujo de tokens

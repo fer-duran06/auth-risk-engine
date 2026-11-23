@@ -1,7 +1,7 @@
 # Fase 3 — Frontend
 
 Login, registro y área protegida `/me` en Next.js 16 (App Router), TypeScript y Tailwind 4. Todo funciona contra la API real, sin datos simulados.
-Quedan para fases posteriores: 2FA (verificación y activación), la seguridad de la cuenta y todas las vistas de administración.
+Quedaron para fases posteriores: 2FA y seguridad de la cuenta (`/login/verify`, `/account/security`, [Fase 4](fase-4-2fa.md)) y las vistas de administración (`/admin/*`, [Fase 6](fase-6-admin.md)).
 
 ## Configuración
 
@@ -75,7 +75,7 @@ El backend solo acepta el header con `app.demo-mode=true`, tanto en `ClientIpRes
 
 ```
 cd frontend
-npm test        # Vitest: cliente API y sesión (fetch simulado, sin DOM)
+npm test        # Vitest: lógica en Node (fetch simulado); las pruebas de componentes (*.test.tsx) usan happy-dom
 npm run lint
 npm run build
 ```
