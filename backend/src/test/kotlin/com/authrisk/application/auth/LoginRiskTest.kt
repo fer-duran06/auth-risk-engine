@@ -77,6 +77,9 @@ class LoginRiskTest {
         assertEquals(f.users.findByEmail(Email.of(email))!!.id, challenge.userId)
         assertEquals(f.clock.instant().plus(f.challengeTtl), challenge.expiresAt)
         assertEquals(attempt.assessment, challenge.assessment)
+        val notification = f.notifications.rows.single()
+        assertEquals(f.users.findByEmail(Email.of(email))!!.id, notification.userId)
+        assertTrue(notification.unread)
     }
 
     @Test
@@ -100,6 +103,11 @@ class LoginRiskTest {
             f.riskCounters.recorded.map { it.third },
         )
         assertEquals(0, f.refreshTokens.tokens.size)
+        // Solo las dos primeras (contraseña correcta e incorrecta) son del email existente;
+        // el tercer intento, contra un email inexistente, no genera notificación.
+        val userId = f.users.findByEmail(Email.of(email))!!.id
+        assertEquals(2, f.notifications.rows.size)
+        assertTrue(f.notifications.rows.all { it.userId == userId })
     }
 
     @Test

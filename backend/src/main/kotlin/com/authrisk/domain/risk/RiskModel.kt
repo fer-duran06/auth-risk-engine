@@ -21,6 +21,12 @@ data class RiskSignals(
     val globalAttempts: Long = 0,
     /** Fallos de contraseña en todo el sistema en la ventana global. */
     val globalFailures: Long = 0,
+    /**
+     * Cuentas distintas (de cualquier IP) con un fallo reciente, en toda la plataforma.
+     * A diferencia de [distinctEmailsForIp], no se limita a una IP: detecta credential stuffing
+     * distribuido (muchas IPs, una cuenta distinta cada una), donde ninguna regla por IP se dispara.
+     */
+    val globalDistinctFailingAccounts: Long = 0,
 )
 
 /**

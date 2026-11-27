@@ -6,9 +6,16 @@ import org.springframework.stereotype.Component
 import java.net.InetAddress
 
 /**
- * IP del cliente para el motor de riesgo: la dirección de la conexión.
- * `X-Forwarded-For` se ignora siempre (sin un proxy configurado lo controla el cliente).
- * Solo con `app.demo-mode=true` se acepta `X-Simulated-IP`, para que el simulador pueda variar IPs.
+ * IP del cliente para el motor de riesgo: la dirección de la conexión (`request.remoteAddr`).
+ *
+ * Detrás de un proxy de confianza, `remoteAddr` ya no es necesariamente la IP real: por eso
+ * `server.forward-headers-strategy=native` (ver application.yml) activa el RemoteIpValve de
+ * Tomcat, que reescribe `remoteAddr` a partir de `X-Forwarded-For` únicamente cuando la conexión
+ * TCP entrante proviene de una IP de la lista de proxies internos de confianza (por defecto,
+ * rangos privados). Fuera de esos rangos el header se ignora y `remoteAddr` sigue siendo la
+ * dirección real del socket, así que un cliente arbitrario no puede falsificar su IP con ese header.
+ * Solo con `app.demo-mode=true` se acepta `X-Simulated-IP` (con prioridad sobre lo anterior), para
+ * que el simulador de ataques pueda variar la IP de origen.
  */
 @Component
 class ClientIpResolver(@Value("\${app.demo-mode:false}") private val demoMode: Boolean) {

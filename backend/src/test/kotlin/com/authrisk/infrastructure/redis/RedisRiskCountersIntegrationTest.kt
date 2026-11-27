@@ -27,8 +27,10 @@ class RedisRiskCountersIntegrationTest : IntegrationTestBase() {
         counters.record(ip, "d@example.com", LoginOutcome.BLOCKED)
 
         // Los bloqueados cuentan para la IP y emails distintos, pero no para la cuenta ni lo global.
-        assertEquals(RiskSignals(5, 4, 2, 4, 2), counters.read(ip, "a@example.com"))
-        assertEquals(RiskSignals(0, 0, 0, 4, 2), counters.read("10.2.2.2", "d@example.com"))
+        // Solo "a" tuvo un FAILURE, así que la cuenta global de cuentas distintas con fallo es 1
+        // (es un contador verdaderamente global: no cambia según la IP o el email consultados).
+        assertEquals(RiskSignals(5, 4, 2, 4, 2, 1), counters.read(ip, "a@example.com"))
+        assertEquals(RiskSignals(0, 0, 0, 4, 2, 1), counters.read("10.2.2.2", "d@example.com"))
     }
 
     @Test

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEve
 import { CodeInput } from "@/components/auth/CodeInput";
 import { QrCode } from "@/components/auth/QrCode";
 import { Alert, Badge, Button, Card, Icon } from "@/components/ui";
-import { authApi, type TotpSetup, type TotpStatus } from "@/lib/api";
+import { authApi, notificationsApi, type AppNotification, type TotpSetup, type TotpStatus } from "@/lib/api";
 import { session } from "@/lib/session";
 import { formatSecret, isCompleteCode } from "@/lib/two-factor/code";
 
@@ -27,6 +27,8 @@ export function SecurityView() {
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [justEnabled, setJustEnabled] = useState(false);
+  const [breachCount, setBreachCount] = useState<number | null>(null);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
   // Con cacheComponents, Next conserva esta página oculta (<Activity>) al navegar. Si el usuario
   // sale a mitad de la activación, el secreto en claro no debe quedar en memoria ni en el DOM oculto.
@@ -51,6 +53,21 @@ export function SecurityView() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
+
+  useEffect(() => {
+    // Independiente del estado del 2FA: se carga aunque esa consulta falle.
+    void session.withAuth((token) => authApi.breachStatus(token)).then((r) => {
+      if (r.kind === "ok") setBreachCount(r.status.breachCount);
+    });
+    void session.withAuth((token) => notificationsApi.list(token)).then((r) => {
+      if (r.kind === "ok") setNotifications(r.items);
+    });
+  }, []);
+
+  async function dismissNotification(id: string) {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    await session.withAuth((token) => notificationsApi.markRead(token, id));
+  }
 
   async function startSetup() {
     setStarting(true);
@@ -77,6 +94,8 @@ export function SecurityView() {
         <h1 className="mt-1 text-3xl font-semibold tracking-tight">Seguridad de la cuenta</h1>
         <p className="mt-1 text-sm text-texto-suave">Protege tu cuenta con un segundo factor de verificación.</p>
       </header>
+
+      <AlertsCard breachCount={breachCount} notifications={notifications} onDismiss={(id) => void dismissNotification(id)} />
 
       {state.kind === "loading" && <SecuritySkeleton />}
 
@@ -307,6 +326,41 @@ function StepCard({ number, kicker, title, children, titleRef }: StepCardProps) 
       </div>
       {children}
     </Card>
+  );
+}
+
+interface AlertsCardProps {
+  breachCount: number | null;
+  notifications: AppNotification[];
+  onDismiss: (id: string) => void;
+}
+
+/** Avisos de seguridad: brechas conocidas del correo y notificaciones de actividad sospechosa. */
+function AlertsCard({ breachCount, notifications, onDismiss }: AlertsCardProps) {
+  const unread = notifications.filter((n) => !n.read);
+  if (!breachCount && unread.length === 0) return null;
+
+  return (
+    <div className="space-y-3">
+      {breachCount != null && breachCount > 0 && (
+        <Alert tone="block" title="Tu correo aparece en filtraciones conocidas">
+          <p>
+            Lo encontramos en {breachCount} {breachCount === 1 ? "filtración pública" : "filtraciones públicas"} de
+            datos. Si usas esta misma contraseña en otro sitio, cámbiala ahí también.
+          </p>
+        </Alert>
+      )}
+      {unread.map((n) => (
+        <Alert key={n.id} tone="challenge" title="Actividad sospechosa en tu cuenta">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <p>{n.message}</p>
+            <Button variant="ghost" onClick={() => onDismiss(n.id)}>
+              Marcar como leída
+            </Button>
+          </div>
+        </Alert>
+      ))}
+    </div>
   );
 }
 

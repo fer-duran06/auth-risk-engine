@@ -4,6 +4,7 @@ import com.authrisk.domain.risk.RiskEngine
 import com.authrisk.domain.risk.RiskPolicy
 import com.authrisk.domain.risk.rules.AccountFailuresRule
 import com.authrisk.domain.risk.rules.DistinctUsersPerIpRule
+import com.authrisk.domain.risk.rules.GlobalDistinctAccountVelocityRule
 import com.authrisk.domain.risk.rules.GlobalFailureRateRule
 import com.authrisk.domain.risk.rules.IpVelocityRule
 import org.springframework.boot.context.properties.ConfigurationProperties
@@ -27,6 +28,7 @@ data class RiskProperties(
         val distinctUsersPerIp: CountRule = CountRule(25, 5, Duration.ofMinutes(10)),
         val accountFailures: CountRule = CountRule(20, 5, Duration.ofMinutes(15)),
         val globalFailureRate: RateRule = RateRule(),
+        val globalDistinctAccounts: CountRule = CountRule(20, 20, Duration.ofMinutes(2)),
     )
 
     data class CountRule(val weight: Int, val threshold: Int, val window: Duration) {
@@ -62,6 +64,7 @@ data class RiskProperties(
             DistinctUsersPerIpRule(rules.distinctUsersPerIp.weight, rules.distinctUsersPerIp.threshold),
             AccountFailuresRule(rules.accountFailures.weight, rules.accountFailures.threshold),
             GlobalFailureRateRule(rules.globalFailureRate.weight, rules.globalFailureRate.ratio, rules.globalFailureRate.minAttempts),
+            GlobalDistinctAccountVelocityRule(rules.globalDistinctAccounts.weight, rules.globalDistinctAccounts.threshold),
         ),
         policy = RiskPolicy(thresholds.challenge, thresholds.block),
     )

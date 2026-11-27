@@ -1,5 +1,6 @@
 package com.authrisk.infrastructure.web.auth
 
+import com.authrisk.application.auth.BreachStatusQuery
 import com.authrisk.application.auth.GetCurrentUserUseCase
 import com.authrisk.application.auth.LoginUseCase
 import com.authrisk.application.auth.LogoutUseCase
@@ -33,6 +34,7 @@ class AuthController(
     private val refresh: RefreshUseCase,
     private val logout: LogoutUseCase,
     private val currentUser: GetCurrentUserUseCase,
+    private val breachStatus: BreachStatusQuery,
     private val cookies: RefreshCookieFactory,
     private val sessions: SessionResponses,
     private val clientIp: ClientIpResolver,
@@ -69,6 +71,14 @@ class AuthController(
     @GetMapping("/me")
     fun me(@AuthenticationPrincipal jwt: Jwt): UserResponse =
         UserResponse.from(currentUser.execute(UUID.fromString(jwt.subject)))
+
+    @Operation(
+        summary = "Brechas conocidas del correo del usuario autenticado (consulta en vivo, no se guarda).",
+        security = [SecurityRequirement(name = "bearerAuth")],
+    )
+    @GetMapping("/breach-status")
+    fun breachStatus(@AuthenticationPrincipal jwt: Jwt): BreachStatusResponse =
+        BreachStatusResponse.from(breachStatus.execute(UUID.fromString(jwt.subject)))
 
     companion object {
         const val REGISTER_MESSAGE = "Si los datos son válidos, la cuenta quedó registrada. Ya puedes iniciar sesión."

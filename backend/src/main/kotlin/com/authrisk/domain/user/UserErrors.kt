@@ -7,6 +7,9 @@ class InvalidEmailException : RuntimeException("Email inválido")
 class WeakPasswordException :
     RuntimeException("La contraseña debe tener entre ${PasswordPolicy.MIN_LENGTH} y ${PasswordPolicy.MAX_LENGTH} caracteres")
 
+/** La contraseña aparece en bases de datos de contraseñas filtradas (Pwned Passwords). */
+class PwnedPasswordException : RuntimeException("Esta contraseña aparece en filtraciones conocidas. Elige otra.")
+
 /** Email o contraseña incorrectos. Mensaje único para no revelar si la cuenta existe. */
 class InvalidCredentialsException : RuntimeException("Credenciales inválidas")
 

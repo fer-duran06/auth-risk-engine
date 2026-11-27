@@ -26,6 +26,11 @@ export interface TotpStatus {
   confirmedAt: string | null;
 }
 
+/** Brechas conocidas del correo (GET /api/auth/breach-status). null: el tercero no respondió. */
+export interface BreachStatus {
+  breachCount: number | null;
+}
+
 /**
  * Resultados tipados: las páginas no interpretan códigos HTTP.
  * Nunca se exponen score ni reglas (el backend tampoco los envía).
@@ -55,6 +60,8 @@ export type TotpEnableResult =
   | { kind: "error" };
 
 export type TotpStatusResult = { kind: "ok"; status: TotpStatus } | { kind: "unauthorized" } | { kind: "error" };
+
+export type BreachStatusResult = { kind: "ok"; status: BreachStatus } | { kind: "unauthorized" } | { kind: "error" };
 
 export type RegisterResult = { kind: "accepted" } | { kind: "invalid" } | { kind: "rate-limited" } | { kind: "error" };
 
@@ -106,6 +113,13 @@ function parseSetup(body: unknown): TotpSetup | null {
 function parseStatus(body: unknown): TotpStatus | null {
   if (!isRecord(body) || typeof body.enabled !== "boolean") return null;
   return { enabled: body.enabled, confirmedAt: typeof body.confirmedAt === "string" ? body.confirmedAt : null };
+}
+
+function parseBreachStatus(body: unknown): BreachStatus | null {
+  if (!isRecord(body)) return null;
+  const { breachCount } = body;
+  if (breachCount !== null && typeof breachCount !== "number") return null;
+  return { breachCount };
 }
 
 /** Endpoints de /api/auth sobre la función HTTP base. */
@@ -211,6 +225,19 @@ export function createAuthApi(http: HttpRequest) {
         if (res.status === 400) return { kind: "invalid" };
         if (res.status === 409) return { kind: "already-enabled" };
         return { kind: "error" };
+      } catch {
+        return { kind: "error" };
+      }
+    },
+
+    /** Consulta en vivo (no se guarda nada): brechas conocidas del correo del usuario autenticado. */
+    async breachStatus(token: string): Promise<BreachStatusResult> {
+      try {
+        const res = await http("/api/auth/breach-status", { token });
+        if (res.status === 401) return { kind: "unauthorized" };
+        if (!res.ok) return { kind: "error" };
+        const status = parseBreachStatus(await readJson(res));
+        return status ? { kind: "ok", status } : { kind: "error" };
       } catch {
         return { kind: "error" };
       }

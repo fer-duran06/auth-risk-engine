@@ -9,6 +9,7 @@ import com.authrisk.domain.totp.TotpAlreadyEnabledException
 import com.authrisk.infrastructure.web.auth.ChallengeResponse
 import com.authrisk.domain.user.InvalidCredentialsException
 import com.authrisk.domain.user.InvalidEmailException
+import com.authrisk.domain.user.PwnedPasswordException
 import com.authrisk.domain.user.UserNotFoundException
 import com.authrisk.domain.user.WeakPasswordException
 import com.authrisk.infrastructure.web.auth.ErrorResponse
@@ -61,7 +62,7 @@ class ApiExceptionHandler(private val cookies: RefreshCookieFactory) {
     fun totpAlreadyEnabled(): ResponseEntity<ErrorResponse> =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ErrorResponse(TOTP_ALREADY_ENABLED))
 
-    @ExceptionHandler(InvalidEmailException::class, WeakPasswordException::class)
+    @ExceptionHandler(InvalidEmailException::class, WeakPasswordException::class, PwnedPasswordException::class)
     fun domainValidation(ex: RuntimeException): ResponseEntity<ErrorResponse> =
         badRequest(listOfNotNull(ex.message))
 

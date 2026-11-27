@@ -25,3 +25,20 @@ class GlobalFailureRateRule(
         signals.globalAttempts >= minAttempts &&
             signals.globalFailures.toDouble() / signals.globalAttempts >= ratio
 }
+
+/**
+ * Muchas cuentas distintas con fallo reciente en toda la plataforma, sin importar la IP de origen.
+ * Cubre el hueco que dejan las reglas por IP ([IpVelocityRule], [DistinctUsersPerIpRule]): un
+ * credential stuffing repartido entre muchas IPs (uno o pocos intentos por IP) nunca hace que esas
+ * reglas se disparen, porque cada IP individual parece normal. Vista en conjunto, en cambio, la
+ * cantidad de cuentas distintas fallando al mismo tiempo es anómala.
+ */
+class GlobalDistinctAccountVelocityRule(override val weight: Int = 20, private val threshold: Int = 20) : RiskRule {
+    init {
+        requireWeight(weight)
+        require(threshold >= 1) { "El umbral debe ser >= 1" }
+    }
+
+    override val id = "GLOBAL_DISTINCT_ACCOUNT_VELOCITY"
+    override fun triggers(signals: RiskSignals) = signals.globalDistinctFailingAccounts >= threshold
+}

@@ -1,5 +1,6 @@
 package com.authrisk.infrastructure.web.auth
 
+import com.authrisk.application.auth.BreachStatusResult
 import com.authrisk.application.twofactor.TotpSetup
 import com.authrisk.application.twofactor.TotpStatus
 import com.authrisk.domain.user.Email
@@ -43,6 +44,13 @@ data class TokenResponse(
 data class UserResponse(val id: UUID, val email: String, val role: String, val createdAt: Instant) {
     companion object {
         fun from(user: User) = UserResponse(user.id, user.email.value, user.role.name, user.createdAt)
+    }
+}
+
+/** [breachCount] es null cuando el servicio de terceros no respondió (no significa "sin brechas"). */
+data class BreachStatusResponse(val breachCount: Int?) {
+    companion object {
+        fun from(result: BreachStatusResult) = BreachStatusResponse(result.breachCount)
     }
 }
 

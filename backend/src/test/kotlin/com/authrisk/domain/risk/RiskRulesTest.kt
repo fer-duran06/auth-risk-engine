@@ -2,6 +2,7 @@ package com.authrisk.domain.risk
 
 import com.authrisk.domain.risk.rules.AccountFailuresRule
 import com.authrisk.domain.risk.rules.DistinctUsersPerIpRule
+import com.authrisk.domain.risk.rules.GlobalDistinctAccountVelocityRule
 import com.authrisk.domain.risk.rules.GlobalFailureRateRule
 import com.authrisk.domain.risk.rules.IpVelocityRule
 import kotlin.test.Test
@@ -49,6 +50,14 @@ class RiskRulesTest {
     }
 
     @Test
+    fun `velocidad global de cuentas distintas detecta stuffing distribuido entre muchas IPs`() {
+        val rule = GlobalDistinctAccountVelocityRule(weight = 20, threshold = 20)
+        // Cada IP ve solo 1 intento (no dispara reglas por IP), pero el total de cuentas distintas sí.
+        assertFalse(rule.triggers(RiskSignals(ipAttempts = 1, distinctEmailsForIp = 1, globalDistinctFailingAccounts = 19)))
+        assertTrue(rule.triggers(RiskSignals(ipAttempts = 1, distinctEmailsForIp = 1, globalDistinctFailingAccounts = 20)))
+    }
+
+    @Test
     fun `parámetros inválidos se rechazan`() {
         assertFailsWith<IllegalArgumentException> { IpVelocityRule(weight = -1) }
         assertFailsWith<IllegalArgumentException> { IpVelocityRule(weight = 101) }
@@ -56,6 +65,7 @@ class RiskRulesTest {
         assertFailsWith<IllegalArgumentException> { GlobalFailureRateRule(ratio = 0.0) }
         assertFailsWith<IllegalArgumentException> { GlobalFailureRateRule(ratio = 1.5) }
         assertFailsWith<IllegalArgumentException> { GlobalFailureRateRule(minAttempts = 0) }
+        assertFailsWith<IllegalArgumentException> { GlobalDistinctAccountVelocityRule(threshold = 0) }
     }
 
     @Test

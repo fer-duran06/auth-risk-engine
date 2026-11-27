@@ -8,9 +8,10 @@ Un documento por fase con su alcance, decisiones de seguridad, limitaciones y pr
 | 2 | [Motor de riesgo](fase-2-riesgo.md) | Reglas ponderadas sobre contadores en Redis, zonas ALLOW/CHALLENGE/BLOCK y fail-safe. |
 | 3 | [Frontend](fase-3-frontend.md) | Login, registro y `/me` en Next.js, sesión en memoria y modo demo. |
 | 4 | [2FA con TOTP](fase-4-2fa.md) | TOTP RFC 6238, secreto cifrado con AES-GCM y CHALLENGE sin oráculo de contraseña. |
-| 5 | — | Contraseñas filtradas (HIBP): **no implementada**. |
+| 5 | — | Contraseñas filtradas (HIBP): ver Fase 8, que la implementa junto con el resto del hardening. |
 | 6 | [Panel de administración](fase-6-admin.md) | Endpoints `/api/admin` (solo ADMIN), dashboard, eventos, IPs y reglas. |
 | 7 | [Simulador de ataque](fase-7-simulador.md) | Credential stuffing contra el backend local, con y sin protección. |
+| 8 | [Hardening post-SAST](fase-8-hardening.md) | Rate limiting, cabeceras de seguridad, IP real tras proxy, HIBP, regla de stuffing distribuido y notificaciones in-app. |
 
 Las fases se documentaron en el orden en que se hicieron. Cuando una fase posterior cambió un comportamiento, el documento anterior lo indica con un enlace.
 

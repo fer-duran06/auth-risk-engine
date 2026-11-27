@@ -33,6 +33,14 @@ server:
   error:
     include-message: never
     include-stacktrace: never
+  # "native" activa el RemoteIpValve de Tomcat: reescribe getRemoteAddr()/isSecure() a partir de
+  # X-Forwarded-For/X-Forwarded-Proto, pero solo cuando la conexión TCP entrante viene de una IP
+  # de las redes "internas" (rangos privados RFC1918 + loopback, por defecto en Tomcat). En este
+  # despliegue el backend no tiene dominio público: solo el contenedor del frontend puede conectarse
+  # (red privada de Railway), así que ese salto es el único que se trata como proxy de confianza.
+  # Si la infraestructura cambia y el proxy de borde queda en otro rango, ajustar
+  # server.tomcat.remoteip.internal-proxies.
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:native}
 
 management:
   endpoints:
@@ -97,3 +105,13 @@ app:
         ratio: 0.5          # proporción de fallos en todo el sistema
         min-attempts: 20    # volumen mínimo para evaluar la proporción
         window: 5m          # en buckets de 1 minuto
+      global-distinct-accounts:
+        weight: 20
+        threshold: 20       # cuentas distintas con fallo, en toda la plataforma (no por IP)
+        window: 2m
+  # Límite de solicitudes por IP a los endpoints sensibles de autenticación (capa de perímetro,
+  # independiente del motor de riesgo; ver RateLimitFilter).
+  rate-limit:
+    enabled: true
+    capacity: 60
+    window: 1m

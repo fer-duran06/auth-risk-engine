@@ -1,10 +1,12 @@
 package com.authrisk.application.auth
 
 import com.authrisk.application.port.TransactionRunner
+import com.authrisk.domain.port.BreachCheckPort
 import com.authrisk.domain.port.PasswordHasher
 import com.authrisk.domain.port.UserRepository
 import com.authrisk.domain.user.Email
 import com.authrisk.domain.user.PasswordPolicy
+import com.authrisk.domain.user.PwnedPasswordException
 import com.authrisk.domain.user.Role
 import com.authrisk.domain.user.User
 import java.time.Clock
@@ -18,12 +20,16 @@ import java.util.UUID
 class RegisterUseCase(
     private val users: UserRepository,
     private val passwordHasher: PasswordHasher,
+    private val breachCheck: BreachCheckPort,
     private val tx: TransactionRunner,
     private val clock: Clock,
 ) {
     fun execute(rawEmail: String, rawPassword: String) {
         val email = Email.of(rawEmail)
         PasswordPolicy.validate(rawPassword)
+        // null (el servicio externo no respondió) se trata como "no filtrada": nunca se bloquea
+        // el registro por la caída de un tercero.
+        if (breachCheck.isPasswordPwned(rawPassword) == true) throw PwnedPasswordException()
         val user = User(
             id = UUID.randomUUID(),
             email = email,

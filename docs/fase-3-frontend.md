@@ -63,7 +63,7 @@ El backend solo acepta el header con `app.demo-mode=true`, tanto en `ClientIpRes
 - Los mensajes son genéricos y no revelan si el email existe. El registro muestra siempre el mismo texto tras el `202`.
 - Tras un intento fallido, bloqueado o desafiado se borra la contraseña del formulario.
 - De las capturas de Stitch se omitieron los elementos prohibidos o inventados: "ISO/IEC 27001", "encriptación en reposo", TLS, IDs de nodo, estadísticas de filtraciones, el campo "Nombre completo" (la API no lo recibe) y "¿Olvidaste tu contraseña?" (fuera de alcance).
-- La comprobación con HIBP llega en su propia fase. Irá en el panel `PasswordPolicy` del registro y deshabilitará el botón si la contraseña está filtrada.
+- La comprobación con HIBP (Pwned Passwords) se implementó en la Fase 8: el registro se rechaza en el servidor si la contraseña aparece filtrada, con el mismo manejo de error genérico que el resto de validaciones de dominio. Ver [`fase-8-hardening.md`](fase-8-hardening.md).
 - **Accesibilidad:**
   - Todos los campos tienen `label` visible.
   - Los errores de cada campo se enlazan con `aria-describedby` y marcan `aria-invalid`.

@@ -82,6 +82,10 @@ La evolución del score es la misma de la Fase 2: el 2FA no cambia las reglas, s
 
 **Conclusión:** contra ataques desde una sola IP (stuffing, spraying y fuerza bruta), el motor reduce las credenciales comprometidas de 21 a 2 sin afectar al tráfico legítimo. Desde la Fase 4, además, en CHALLENGE no se filtra qué credenciales son válidas. Contra el ataque distribuido, el más realista, las reglas actuales siguen sin aportar nada. En total, las comprometidas pasan de 36 a 17 (−53 %).
 
+## Actualización (Fase 8)
+
+La limitación #1 de abajo (el stuffing distribuido no se detectaba) quedó resuelta con la nueva regla `GLOBAL_DISTINCT_ACCOUNT_VELOCITY`. Ver [`fase-8-hardening.md`](fase-8-hardening.md). La tabla de resultados de esta página sigue siendo la corrida original, previa a esa regla; falta volver a correr el simulador con el motor actualizado para tener un número nuevo del escenario c).
+
 ## Limitaciones y trabajo futuro
 
 ### Limitaciones observadas

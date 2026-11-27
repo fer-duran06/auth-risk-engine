@@ -2,6 +2,7 @@ import { createAdminApi } from "./admin";
 import { createAuthApi } from "./auth";
 import { API_URL, DEMO_MODE } from "./config";
 import { createHttp } from "./http";
+import { createNotificationsApi } from "./notifications";
 import { simulatedIp } from "./simulated-ip";
 
 const http = createHttp({ baseUrl: API_URL, demoMode: DEMO_MODE, getSimulatedIp: simulatedIp.get });
@@ -9,10 +10,13 @@ const http = createHttp({ baseUrl: API_URL, demoMode: DEMO_MODE, getSimulatedIp:
 /** Instancias únicas del cliente, configuradas con las variables NEXT_PUBLIC_*. */
 export const authApi = createAuthApi(http);
 export const adminApi = createAdminApi(http);
+export const notificationsApi = createNotificationsApi(http);
 
 export type {
   AccessToken,
   AuthApi,
+  BreachStatus,
+  BreachStatusResult,
   CurrentUser,
   LoginResult,
   MeResult,
@@ -21,6 +25,7 @@ export type {
   TotpStatus,
   VerifyResult,
 } from "./auth";
+export type { AppNotification, NotificationsApi, NotificationsResult } from "./notifications";
 export type {
   AdminEvent,
   AdminResult,

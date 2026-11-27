@@ -2,7 +2,10 @@ package com.authrisk.application.auth
 
 import com.authrisk.application.port.TransactionRunner
 import com.authrisk.application.twofactor.LoginChallengeIssuer
+import com.authrisk.domain.notification.Notification
+import com.authrisk.domain.notification.NotificationKind
 import com.authrisk.domain.port.LoginAttemptRepository
+import com.authrisk.domain.port.NotificationRepository
 import com.authrisk.domain.port.PasswordHasher
 import com.authrisk.domain.port.RefreshTokenRepository
 import com.authrisk.domain.port.RiskCounters
@@ -43,6 +46,7 @@ class LoginUseCase(
     private val riskCounters: RiskCounters,
     private val loginAttempts: LoginAttemptRepository,
     private val challenges: LoginChallengeIssuer,
+    private val notifications: NotificationRepository,
     private val tx: TransactionRunner,
     private val clock: Clock,
     private val riskEnabled: Boolean = true,
@@ -75,6 +79,12 @@ class LoginUseCase(
         if (risk.zone == RiskZone.CHALLENGE) {
             // Mismo trabajo y misma respuesta en ambos casos: solo el registro interno distingue.
             finish(if (valid) LoginOutcome.CHALLENGED else LoginOutcome.FAILURE)
+            // Solo si el email es de una cuenta real: a un email inexistente no hay a quién avisar.
+            // Trade-off consciente: esta escritura extra (solo cuando el usuario existe) reintroduce
+            // una asimetría de tiempo mínima que el resto del flujo evita a propósito (ver
+            // VerifyConstantPathTest). Se acepta porque es un INSERT de una fila, muy por debajo del
+            // ruido normal de red, a cambio de una notificación real al dueño de la cuenta.
+            if (user != null) notifySuspiciousLogin(user.id)
             throw ChallengeRequiredException(challenges.issue(user?.id, valid, attemptedEmail, ip, risk))
         }
 
@@ -96,6 +106,19 @@ class LoginUseCase(
         } catch (_: RiskCountersUnavailableException) {
             RiskAssessment.failSafe()
         }
+    }
+
+    private fun notifySuspiciousLogin(userId: UUID) {
+        val notification = Notification(
+            id = UUID.randomUUID(),
+            userId = userId,
+            kind = NotificationKind.SUSPICIOUS_LOGIN,
+            message = "Detectamos un inicio de sesión con actividad inusual en tu cuenta y pedimos " +
+                "verificación adicional. Si no fuiste tú, considera cambiar tu contraseña.",
+            createdAt = clock.instant(),
+            readAt = null,
+        )
+        tx.inTransaction { notifications.save(notification) }
     }
 
     private fun record(email: String, ip: String, risk: RiskAssessment, outcome: LoginOutcome) {

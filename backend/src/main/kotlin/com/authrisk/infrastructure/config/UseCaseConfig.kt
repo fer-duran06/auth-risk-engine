@@ -1,5 +1,6 @@
 package com.authrisk.infrastructure.config
 
+import com.authrisk.application.auth.BreachStatusQuery
 import com.authrisk.application.auth.GetCurrentUserUseCase
 import com.authrisk.application.auth.LoginUseCase
 import com.authrisk.application.auth.LogoutUseCase
@@ -7,8 +8,12 @@ import com.authrisk.application.auth.RefreshUseCase
 import com.authrisk.application.auth.RegisterUseCase
 import com.authrisk.application.auth.SessionTokenFactory
 import com.authrisk.application.port.TransactionRunner
+import com.authrisk.application.notification.ListNotificationsUseCase
+import com.authrisk.application.notification.MarkNotificationReadUseCase
 import com.authrisk.application.twofactor.LoginChallengeIssuer
+import com.authrisk.domain.port.BreachCheckPort
 import com.authrisk.domain.port.LoginAttemptRepository
+import com.authrisk.domain.port.NotificationRepository
 import com.authrisk.domain.port.PasswordHasher
 import com.authrisk.domain.port.RiskCounters
 import com.authrisk.domain.risk.RiskEngine
@@ -37,8 +42,16 @@ class UseCaseConfig {
         SessionTokenFactory(issuer, generator, props.refreshTokenTtl)
 
     @Bean
-    fun registerUseCase(users: UserRepository, hasher: PasswordHasher, tx: TransactionRunner, clock: Clock) =
-        RegisterUseCase(users, hasher, tx, clock)
+    fun registerUseCase(
+        users: UserRepository,
+        hasher: PasswordHasher,
+        breachCheck: BreachCheckPort,
+        tx: TransactionRunner,
+        clock: Clock,
+    ) = RegisterUseCase(users, hasher, breachCheck, tx, clock)
+
+    @Bean
+    fun breachStatusQuery(users: UserRepository, breachCheck: BreachCheckPort) = BreachStatusQuery(users, breachCheck)
 
     @Bean
     fun riskEngine(props: RiskProperties): RiskEngine = props.toEngine()
@@ -53,6 +66,7 @@ class UseCaseConfig {
         riskCounters: RiskCounters,
         loginAttempts: LoginAttemptRepository,
         challenges: LoginChallengeIssuer,
+        notifications: NotificationRepository,
         tx: TransactionRunner,
         clock: Clock,
         riskProps: RiskProperties,
@@ -61,7 +75,8 @@ class UseCaseConfig {
         val riskEnabled = riskProps.effectiveEnabled(demoMode)
         if (!riskEnabled) log.warn("MOTOR DE RIESGO DESACTIVADO (app.risk.enabled=false): todo login es ALLOW. Solo para demos.")
         return LoginUseCase(
-            users, refreshTokens, hasher, sessionTokens, riskEngine, riskCounters, loginAttempts, challenges, tx, clock, riskEnabled,
+            users, refreshTokens, hasher, sessionTokens, riskEngine, riskCounters, loginAttempts, challenges, notifications,
+            tx, clock, riskEnabled,
         )
     }
 
@@ -85,4 +100,11 @@ class UseCaseConfig {
 
     @Bean
     fun getCurrentUserUseCase(users: UserRepository) = GetCurrentUserUseCase(users)
+
+    @Bean
+    fun listNotificationsUseCase(notifications: NotificationRepository) = ListNotificationsUseCase(notifications)
+
+    @Bean
+    fun markNotificationReadUseCase(notifications: NotificationRepository, clock: Clock) =
+        MarkNotificationReadUseCase(notifications, clock)
 }

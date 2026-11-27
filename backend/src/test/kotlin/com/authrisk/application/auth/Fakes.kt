@@ -3,8 +3,11 @@ package com.authrisk.application.auth
 import com.authrisk.application.port.TransactionRunner
 import com.authrisk.application.twofactor.LoginChallengeIssuer
 import com.authrisk.application.twofactor.VerifyLoginChallengeUseCase
+import com.authrisk.domain.notification.Notification
+import com.authrisk.domain.port.BreachCheckPort
 import com.authrisk.domain.port.ChallengeIdGenerator
 import com.authrisk.domain.port.LoginChallengeRepository
+import com.authrisk.domain.port.NotificationRepository
 import com.authrisk.domain.totp.LoginChallenge
 import com.authrisk.domain.totp.Totp
 import com.authrisk.domain.port.LoginAttemptRepository
@@ -142,10 +145,13 @@ class AuthFixture(riskEnabled: Boolean = true) {
     val challengeTtl: Duration = Duration.ofMinutes(5)
     val maxVerifyAttempts = 5
     val challengeIssuer = LoginChallengeIssuer(challenges, challengeIds, tx, clock, challengeTtl)
+    val breachCheck = FakeBreachCheckPort()
+    val notifications = InMemoryNotificationRepository()
 
-    val register = RegisterUseCase(users, hasher, tx, clock)
+    val register = RegisterUseCase(users, hasher, breachCheck, tx, clock)
     val login = LoginUseCase(
-        users, refreshTokens, hasher, sessions, riskEngine, riskCounters, loginAttempts, challengeIssuer, tx, clock, riskEnabled,
+        users, refreshTokens, hasher, sessions, riskEngine, riskCounters, loginAttempts, challengeIssuer, notifications,
+        tx, clock, riskEnabled,
     )
     val verify = VerifyLoginChallengeUseCase(
         challenges, challengeIds, totpRepo, cipher, totp, users, refreshTokens, sessions, loginAttempts, tx, clock, maxVerifyAttempts,
@@ -261,4 +267,30 @@ class SequentialChallengeIdGenerator : ChallengeIdGenerator {
     private var counter = 0
     override fun generate() = "challenge-${++counter}"
     override fun hash(rawToken: String) = "sha:$rawToken"
+}
+
+/** Por defecto "no filtrada"/"sin brechas": los tests no dependen de red. Configurable por caso. */
+class FakeBreachCheckPort : BreachCheckPort {
+    var pwned: Boolean? = false
+    var breaches: Int? = 0
+    override fun isPasswordPwned(rawPassword: String) = pwned
+    override fun breachesForEmail(email: String) = breaches
+}
+
+class InMemoryNotificationRepository : NotificationRepository {
+    val rows = mutableListOf<Notification>()
+
+    override fun save(notification: Notification) {
+        rows += notification
+    }
+
+    override fun findRecentByUserId(userId: UUID, limit: Int) =
+        rows.filter { it.userId == userId }.sortedByDescending { it.createdAt }.take(limit)
+
+    override fun markRead(id: UUID, userId: UUID, now: Instant): Boolean {
+        val index = rows.indexOfFirst { it.id == id && it.userId == userId && it.readAt == null }
+        if (index < 0) return false
+        rows[index] = rows[index].copy(readAt = now)
+        return true
+    }
 }
