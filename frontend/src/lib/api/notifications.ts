@@ -14,6 +14,9 @@ export type NotificationsResult =
   | { kind: "unauthorized" }
   | { kind: "error" };
 
+/** Idéntica forma {kind} que el resto de resultados: así `session.withAuth` puede reintentar tras refrescar el token. */
+export type MarkReadResult = { kind: "ok" } | { kind: "unauthorized" } | { kind: "error" };
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -44,12 +47,14 @@ export function createNotificationsApi(http: HttpRequest) {
     },
 
     /** Idempotente: no distingue "ya estaba leída" de "se acaba de marcar". */
-    async markRead(token: string, id: string): Promise<boolean> {
+    async markRead(token: string, id: string): Promise<MarkReadResult> {
       try {
         const res = await http(`/api/notifications/${encodeURIComponent(id)}/read`, { method: "POST", token });
-        return res.ok || res.status === 204;
+        if (res.status === 401) return { kind: "unauthorized" };
+        if (res.ok || res.status === 204) return { kind: "ok" };
+        return { kind: "error" };
       } catch {
-        return false;
+        return { kind: "error" };
       }
     },
   };

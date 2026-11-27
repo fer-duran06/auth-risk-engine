@@ -25,7 +25,7 @@ export type {
   TotpStatus,
   VerifyResult,
 } from "./auth";
-export type { AppNotification, NotificationsApi, NotificationsResult } from "./notifications";
+export type { AppNotification, MarkReadResult, NotificationsApi, NotificationsResult } from "./notifications";
 export type {
   AdminEvent,
   AdminResult,

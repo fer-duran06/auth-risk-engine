@@ -27,7 +27,7 @@ class RedisRateLimiter(private val redis: StringRedisTemplate, private val props
             val bucket = System.currentTimeMillis() / (windowSeconds * 1000)
             val redisKey = "ratelimit:$key:$bucket"
             val count = redis.execute(SCRIPT, listOf(redisKey), windowSeconds.toString())
-            if (count != null && count > props.capacity) {
+            if (count != null && count > props.capacity.toLong()) {
                 val elapsed = (System.currentTimeMillis() / 1000) % windowSeconds
                 RateLimitResult(allowed = false, retryAfterSeconds = windowSeconds - elapsed)
             } else {
